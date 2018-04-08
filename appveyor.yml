@@ -1,0 +1,39 @@
+init:
+  - SET PROJDIR=%cd%
+  - pip install pywin32 psutil
+  - pip install http://sourceforge.net/projects/py2exe/files/latest/download?source=files
+  - mkdir c:\u
+  - cd c:\u
+  - curl -L -O "https://github.com/upx/upx/releases/download/v3.94/upx394w.zip"
+  - unzip upx394w.zip
+  - cd %PROJDIR%
+
+build_script:
+  - python setup.py py2exe
+  - cp dist\py.exe .
+  - C:\u\upx394w\upx.exe --best --ultra-brute --8086 py.exe
+
+artifacts:
+  - path: dist\py.exe
+  - path: py.exe
+
+deploy:
+  - provider: GitHub
+    tag: 'pyexe-latest'
+    release: 'Release pyexe-latest'
+    auth_token:
+      secure: PGsGUDU6oqIy7zCyTMwIWlzf4TbJtuIgqmWb9ZLqNlM13AAaxWfDlzDlG+0CyHFx
+    artifact: py.exe
+    force_update: true
+    on:
+      branch: master
+
+  - provider: GitHub
+    tag: $(appveyor_repo_tag_name)
+    release: Release $(appveyor_repo_tag_name)
+    auth_token:
+      secure: PGsGUDU6oqIy7zCyTMwIWlzf4TbJtuIgqmWb9ZLqNlM13AAaxWfDlzDlG+0CyHFx
+    artifact: py.exe
+    force_update: true
+    on:
+      appveyor_repo_tag: true
