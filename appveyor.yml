@@ -1,0 +1,63 @@
+environment:
+  matrix:
+    - PYTHON: "C:\\Python27"
+      OUTPUT: "py27.exe"
+      PY2EXE: "http://sourceforge.net/projects/py2exe/files/latest/download?source=files"
+    - PYTHON: "C:\\Python27-x64"
+      OUTPUT: "py27-64.exe"
+      PY2EXE: "http://sourceforge.net/projects/py2exe/files/latest/download?source=files"
+    - PYTHON: "C:\\Python35"
+      OUTPUT: "py35.exe"
+      PY2EXE: "py2exe"
+    - PYTHON: "C:\\Python35-x64"
+      OUTPUT: "py35-64.exe"
+      PY2EXE: "py2exe"
+    - PYTHON: "C:\\Python36-x64"
+      OUTPUT: "py36.exe"
+      PY2EXE: "py2exe"
+
+init:
+  - SET PROJDIR=%cd%
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - "python -m pip install pywin32 psutil six setuptools"
+  - "python -m pip install pyinstaller"
+  - "python -m pip install %PY2EXE%"
+  - mkdir c:\u
+  - cd c:\u
+  - curl -L -O "https://github.com/upx/upx/releases/download/v3.94/upx394w.zip"
+  - unzip upx394w.zip
+  - cd %PROJDIR%
+
+build_script:
+  - python list_modules.py py.py
+  - python -m PyInstaller --onefile py.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter
+  # - python -m PyInstaller --onefile py.py --noupx
+  # - python setup.py py2exe
+  - cp dist\py.exe %OUTPUT%
+  - C:\u\upx394w\upx.exe --best -o py.exe dist\py.exe
+
+artifacts:
+  - path: py.py
+  - path: "%OUTPUT%"
+  - path: py.exe
+
+deploy:
+  - provider: GitHub
+    tag: 'pyexe-latest'
+    release: 'Release pyexe-latest'
+    auth_token:
+      secure: PGsGUDU6oqIy7zCyTMwIWlzf4TbJtuIgqmWb9ZLqNlM13AAaxWfDlzDlG+0CyHFx
+    artifact: "%OUTPUT%"
+    force_update: true
+    on:
+      branch: master
+
+  - provider: GitHub
+    tag: $(appveyor_repo_tag_name)
+    release: Release $(appveyor_repo_tag_name)
+    auth_token:
+      secure: PGsGUDU6oqIy7zCyTMwIWlzf4TbJtuIgqmWb9ZLqNlM13AAaxWfDlzDlG+0CyHFx
+    artifact: "%OUTPUT%"
+    force_update: true
+    on:
+      appveyor_repo_tag: true
