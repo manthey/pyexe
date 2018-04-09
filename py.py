@@ -192,7 +192,8 @@ if Start:  # noqa
     # work.
     if not SkipFirstLine:
         # execfile(sys.argv[0], globenv)
-        execfile(sys.argv[0])
+        # execfile(sys.argv[0])
+        src = open(sys.argv[0]).read()
     else:
         fptr = open(sys.argv[0])
         discard = fptr.readline()
@@ -200,6 +201,7 @@ if Start:  # noqa
         fptr.close()
         # exec src in globenv
         # exec src
+    six.exec_(src)
 elif RunModule:
     import runpy
     runpy.run_module(RunModule, run_name='__main__')
