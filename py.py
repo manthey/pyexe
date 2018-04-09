@@ -1,53 +1,4 @@
 #!/usr/bin/python
-#
-# This is a small stub that is intended to be built into an executable with a
-# setup.py file using "python setup.py py2exe".  This results in an executable
-# called py.exe.  This can be used to run an arbitrary python script on Windows
-# (XP and later) via py.exe (name of script).
-#
-# Changes:
-#  2.7.4.1:
-#   * initial release
-#  2.7.4.2:
-#   * fixed an issue with __file__ and __name__
-#  2.7.4.3:
-#   * Added the program path to sys.path when running a program, and '' to
-# sys.path when running direct or interpretted.
-#  2.7.5.4:
-#   * Upgraded to python 2.7.5
-#  2.7.5.5:
-#   * Imported submodules, such as logging.handlers, since they weren't
-# included implicitly.
-#  2.7.8.6:
-#   * Added support for multiprocessing forking
-#   * Added support for non-ttty direct usage (input and output pipes, for
-# instance)
-#   * Added support for -i option and PYTHONINSPECT environment variable.
-#   * Turned off 'frozen' flag in py.exe
-#   * Upgraded pywin32 to build 219 (was 218).
-#   * Upgraded to python 2.7.8
-#   * Added import site to interactive prompts to get help and other commands
-# added to the builtins.
-#   * Added support for unbuffered -u option and PYTHONUNBUFFERED environment
-# variable.
-#  2.7.8.7:
-#   * Added support for -E, -x, and --version options.
-#   * Changed how the globals / locals dictionaries are used for greater
-# consistency in different execution modes.
-#   * Accept multiple single letter command line options grouped together.
-#  2.7.8.8:
-#   * Fixed a bug I introduced in the last version when renaming the variable
-# 'loc'.
-#  2.7.8.9:
-#   * My change to make globals dictionaries more consistent broke
-# multiprocessing forking.  I've reverted some of the changes.
-#  2.7.9.10:
-#   * Upgraded to python 2.7.9
-#   * Added psutil 2.1.3 win32
-#   * Added support for the -m option.
-#   * Turned off the optimization flag when building py.exe.  Having it on
-# interferes with some modules (such as sympy) which rely on docstring
-# manipulation.
 
 import os
 import six
@@ -109,8 +60,10 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
             elif let == 'i':
                 Interactive = True
             elif let == 'm' and i+1 < len(sys.argv):
-                RunModule = sys.argv[i+1]
+                RunModule = sys.argv[i+1+skip]
+                RunArgv = sys.argv[i+1+skip:i+2+skip]
                 skip = 1
+                break
             elif let == 'S':
                 ImportSite = False
             elif let == 'u':
@@ -137,7 +90,10 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
     elif arg.startswith('-'):
         Help = True
     elif not Start:
-        Start = i
+        if RunModule:
+            RunArgv += sys.argv[i:]
+        else:
+            Start = i
         break
 if Help:
     print("""Stand-Alone Python Interpreter
@@ -190,20 +146,14 @@ if Start:  # noqa
     sys.path[0:0] = [os.path.split(__file__)[0]]
     # If I try to use the simplified global dictionary, multiprocessing doesn't
     # work.
-    if not SkipFirstLine:
-        # execfile(sys.argv[0], globenv)
-        # execfile(sys.argv[0])
-        src = open(sys.argv[0]).read()
-    else:
-        fptr = open(sys.argv[0])
-        discard = fptr.readline()
+    with open(sys.argv[0]) as fptr:
+        if SkipFirstLine:
+            discard = fptr.readline()
         src = fptr.read()
-        fptr.close()
-        # exec src in globenv
-        # exec src
-    six.exec_(src)
+        six.exec_(src)
 elif RunModule:
     import runpy
+    sys.argv = RunArgv
     runpy.run_module(RunModule, run_name='__main__')
 elif DirectCmd:
     sys.path[0:0] = ['']
@@ -241,7 +191,7 @@ else:
             src.append(line)
         if len(src):
             interp.runsource(''.join(src))
-    else:
+    elif not Start:
         src = sys.stdin.read()
         # This doesn't work the way I expect for some reason
         #  interp = code.InteractiveInterpreter(locals=globenv)
