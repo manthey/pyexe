@@ -2,9 +2,11 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/n18f0997k18x87lw/branch/master?svg=true)](https://ci.appveyor.com/project/manthey/pyexe/branch/master)
 
-I have often wanted a stand-alone version of python that would be a single Windows executable.  This is my attempt to make a generally useful executable.
+I have often wanted a stand-alone version of python that is a single Windows executable.
 
-It consists of the most recent versions of  Python 2.7, pywin32, and psutil, and includes all packages that py2exe sensibly includes without extra work.
+It consists of the most recent versions of Python (with builds for 2.7 32-bit, 2.7 64-bit, 3.5 32-bit,
+3.5 64-bit, and 3.6 64-bit), pywin32, psutil, six, and includes all packages that can be included
+without additional dlls, excepting tkinter.
 
 See the appveyor script for build instructions.
 
