@@ -28,7 +28,7 @@ from py_version import Version, Description
 
 setup(
     console=[{
-        'script': 'py.py',
+        'script': 'pyexe.py',
         'other_resources': [(
             py2exe.resources.VersionInfo.RT_VERSION, 1, py2exe.resources.VersionInfo.Version(
                 version=Version,

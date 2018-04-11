@@ -24,7 +24,7 @@ all = [item for item in all if '-' not in item]
 # Modules we know we can't work with or are completely pointless
 Exclude = [
     # our own code
-    'py', 'pymodules',
+    'pyexe', 'modules_pyexe', 'modules_pyexe_list',
     # installers
     'py2exe',
     'PyInstaller', 'pefile', 'macholib', 'dis3', 'future', 'altgraph',

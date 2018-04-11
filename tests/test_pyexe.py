@@ -16,6 +16,13 @@ def runPyExe(exepath, options=[], input=''):
     return out, err
 
 
+def testVersion(exepath):
+    out, err = runPyExe(exepath, ['--version'])
+    assert out.startswith('Stand-Alone Python Interpreter')
+    out, err = runPyExe(exepath, ['-V'])
+    assert out.startswith('Stand-Alone Python Interpreter')
+
+
 def testDirectCommand(exepath):
     out, err = runPyExe(exepath, ['-c', 'print("This is a test")'])
     assert out.startswith('This is a test')
@@ -27,15 +34,31 @@ def testDirectCommandImport(exepath):
     assert out.startswith('{"test": "value"}')
 
 
-def testVersion(exepath):
-    out, err = runPyExe(exepath, ['--version'])
-    assert out.startswith('Stand-Alone Python Interpreter')
-    out, err = runPyExe(exepath, ['-V'])
-    assert out.startswith('Stand-Alone Python Interpreter')
+def testImportPsutil(exepath):
+    out, err = runPyExe(exepath, [
+        '-c', """import psutil;print(repr(psutil.cpu_times()))"""])
+    assert 'scputimes' in out
+    out, err = runPyExe(exepath, [
+        '-c', """import psutil;print(repr(psutil.net_connections()))"""])
+    assert 'raddr' in out
+
+
+def testImportSix(exepath):
+    out, err = runPyExe(exepath, [
+        '-c', """import six;print(six.callable(six.BytesIO))"""])
+    assert 'True' in out
+
+
+def testImportPywin32(exepath):
+    out, err = runPyExe(exepath, input="""import win32con
+import win32file
+print('%r' % [
+  win32file.GetFileAttributes('.'), win32con.FILE_ATTRIBUTE_DIRECTORY])
+""")
+    assert '16, 16' in out
 
 
 # Add tests for:
-#  importing psutil, six, pywin32
 #  command line options:
 #    -i / PYTHONINSPECT
 #    -h / --help /?
@@ -46,3 +69,4 @@ def testVersion(exepath):
 #  with source file
 #    -x
 #  stdin
+#  pip install serial and then use it
