@@ -2,36 +2,23 @@
 
 import importlib
 import os
+import re
+import six
+import subprocess
 import sys
 
-modules = os.popen("""python -c "help('modules')" 2>&1""").read()
-modules = modules.replace('\r\n', '\n').strip().split('\n\n')[1].split()
-modules.sort()
-
-submodules = os.popen("""python -c "help('modules .')" 2>&1""").read()
-submodules = submodules.replace('\r\n', '\n').strip().split('\n\n')[1].split('\n')
-submodules = [item.strip() for item in [item.split(' - ')[0] for item in submodules] if '.' in item]
-# This filter shouldn't remove anything
-submodules = [item for item in submodules if item.split('.')[0] in modules]
-submodules.sort()
-all = modules[:]
-all.extend(submodules)
-all.sort()
-
-# Remove modules with dashes in their names
-all = [item for item in all if '-' not in item]
-
 # Modules we know we can't work with or are completely pointless
-Exclude = [
+ExcludeModules = [
     # our own code
     'pyexe', 'modules_pyexe', 'modules_pyexe_list',
-    # installers
+    # installers and modules the installers require
     'py2exe',
     'PyInstaller', 'pefile', 'macholib', 'dis3', 'future', 'altgraph',
     'ordlookup', 'peutils', 'libfuturize', 'libpasteurize', 'past',
+    # test
+    "test", "tests",
     # Pointless modules
     'antigravity', 'this', 'lib2to3.__main__', 'unittest.__main__',
-    'win32com.demos', 'win32com.directsound.test', 'win32com.test',
     'win32traceutil',
     # Much of win32com is really located in win32comext.  py2exe doesn't attach
     # this properly, and I haven't gotten the work-around working.
@@ -58,11 +45,6 @@ Exclude = [
     'pywin.debugger', 'pywin.dialogs', 'pywin.docking', 'pywin.framework',
     'pywin.mfc', 'pywin.scintilla', 'pywin.tools', 'win32com.client.combrowse',
     'win32com.client.tlbrowse',
-    # Linux only
-    'pty', 'tty',
-    # Tests
-    'bsddb.test', 'ctypes.test', 'distutils.tests', 'email.test', 'json.tests',
-    'lib2to3.tests', 'sqlite3.test', 'test', 'unittest.test', 'psutil.tests',
     # Modules in appveyor that shouldn't be included, plus tkinter
     'Canvas', 'Dialog', 'FileDialog', 'FixTk', 'ScrolledText', 'SimpleDialog',
     'Tix', 'Tkconstants', 'Tkdnd', 'Tkinter', '_LWPCookieJar',
@@ -71,34 +53,103 @@ Exclude = [
     'tkFileDialog', 'tkFont', 'tkMessageBox', 'tkSimpleDialog', 'tkinter',
     'ttk', 'turtle', 'turtledemo', 'tcl', 'tk', 'Tkinter',
 ]
-for item in all[:]:
-    if item in Exclude:
-        all.remove(item)
-        continue
-    for ex in Exclude:
-        if item.startswith(ex+'.'):
-            all.remove(item)
-            break
-for item in all[:]:
-    try:
-        # sys.stderr.write('?- %s --\n' % item)
-        # sys.stderr.flush()
-        if item in sys.modules and '.' in item:
-            all.remove(item)
-            continue
-        mod = importlib.import_module(item)
-        sys.stderr.write('-- %s --\n' % item)
-        sys.stderr.flush()
-    except BaseException:
-        all.remove(item)
+# Exclude examples, tests, and Tk.  Some of these won't exist in the default
+# installation
+ExcludeParts = [
+    'examples', 'demos', 'test', 'tests', 'testsuite', 'testing',
+    'test_manage', 'Tk']
 
-if len(sys.argv) > 1:
-    head = b'    # IMPORT ALL MODULES'
-    tail = b'    # END IMPORT ALL MODULES'
-    data = open(sys.argv[1], 'rb').read()
-    imports = ('\n    import '.join([''] + all) + '\n').encode('utf8')
-    data = data.split(head)[0] + head + imports + tail + data.split(tail)[1]
-    open(sys.argv[1], 'wb').write(data)
-else:
-    for item in all:
-        print('import %s' % item)
+
+def list_modules():
+    """
+    Get a list of all modules and submodules in the system that we can import.
+
+    Exit:  modules: a list of modules.
+    """
+    with open(os.devnull, 'w') as devnull:
+        modules = subprocess.Popen(
+            ['python', '-c', 'help("modules")'],
+            stdout=subprocess.PIPE, stderr=devnull).stdout.read()
+        if not isinstance(modules, six.string_types):
+            modules = modules.decode('utf8')
+        submodules = subprocess.Popen(
+            ['python', '-c', 'help("modules .")'],
+            stdout=subprocess.PIPE, stderr=devnull).stdout.read()
+        if not isinstance(submodules, six.string_types):
+            submodules = submodules.decode('utf8')
+    modules = modules.replace('\r\n', '\n').strip().split('\n\n')[1].split()
+    submodules = submodules.replace('\r\n', '\n').strip().split('\n\n')[1].split('\n')
+    submodules = [item.strip() for item in [
+        item.split(' - ')[0] for item in submodules] if '.' in item]
+    # This filter shouldn't remove anything
+    submodules = [item for item in submodules if item.split('.')[0] in modules]
+    modules = set(modules + submodules)
+
+    # Remove modules with dashes in their names
+    modules = [item for item in modules if '-' not in item]
+
+    # Remove modules starting with values in ExcludeModules or containing a
+    # module component in ExcludeParts
+    regex = re.compile(
+        '(^(' + '|'.join([re.escape(val) for val in ExcludeModules]) +
+        ')|\.(' + '|'.join([re.escape(val) for val in ExcludeParts]) +
+        '))(\.|$)')
+    modules = [item for item in modules if not regex.search(item)]
+    modules.sort()
+
+    for item in modules[:]:
+        try:
+            # If we already imported the module based on a previous import, we
+            # don't need to include it explicitly
+            if item in sys.modules and '.' in item:
+                modules.remove(item)
+                continue
+            sys.stderr.write('? %s\r' % item)
+            sys.stderr.flush()
+            mod = importlib.import_module(item)  # noqa
+            sys.stderr.write('+ %s\n' % item)
+            sys.stderr.flush()
+        except BaseException:
+            # If the import fails, remove the modules from the list
+            modules.remove(item)
+            sys.stderr.write('- %s\n' % item)
+            sys.stderr.flush()
+    return modules
+
+
+if __name__ == '__main__':
+    pyexePath = None
+    Help = False
+    for arg in sys.argv[1:]:
+        if arg.startswith('-'):
+            if arg.startswith('--exclude='):
+                ExcludeModules.extend(arg.split('=', 1)[1].split(','))
+            elif arg.startswith('--exclude-part='):
+                ExcludeParts.extend(arg.split('=', 1)[1].split(','))
+            else:
+                Help = True
+        elif not pyexePath:
+            pyexePath = arg
+        else:
+            Help = True
+    if Help:
+        print("""Generate a list of importable system modules.
+
+Syntax: modules_pyexe.py [pyexe.py]
+             [--exclude=(comma-separated list of module names)]
+             [--exclude-part=(comma-separated list of module component names)]
+
+If a path is specified, the pyexe.py file is altered.  If no path is specified,
+the module list is written to stdout.""")
+        sys.exit(0)
+    modules = list_modules()
+    if pyexePath:
+        head = b'    # IMPORT ALL MODULES'
+        tail = b'    # END IMPORT ALL MODULES'
+        data = open(pyexePath, 'rb').read()
+        imports = ('\n    import '.join([''] + modules) + '\n').encode('utf8')
+        data = data.split(head, 1)[0] + head + imports + tail + data.split(tail, 1)[1]
+        open(sys.argv[1], 'wb').write(data)
+    else:
+        for item in modules:
+            print('import %s' % item)
