@@ -12,8 +12,8 @@ if not AllModules and sys.argv[:2][-1] != '--all':
     pass
 else:
     # IMPORT ALL MODULES
-    import pymodules  # noqa
-    print(dir(pymodules))  # for installers to include submodules
+    import modules_pyexe_list  # noqa, this is the output of modules_pyexe
+    print(dir(modules_pyexe_list))  # for installers to include submodules
     # END IMPORT ALL MODULES
 
 

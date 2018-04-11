@@ -8,8 +8,10 @@ environment:
       OUTPUT: "py35.exe"
     - PYTHON: "C:\\Python35-x64"
       OUTPUT: "py35-64.exe"
-    - PYTHON: "C:\\Python36-x64"
+    - PYTHON: "C:\\Python36"
       OUTPUT: "py36.exe"
+    - PYTHON: "C:\\Python36-x64"
+      OUTPUT: "py36-64.exe"
 
 init:
   - SET PROJDIR=%cd%
@@ -24,19 +26,22 @@ init:
   - cd %PROJDIR%
 
 build_script:
-  - python list_modules.py py.py
-  - python -m PyInstaller --onefile py.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter
-  - cp dist\py.exe %OUTPUT%
+  - python modules_pyexe.py pyexe.py
+  # Save the artifact immediately
+  - appveyor PushArtifact pyexe.py
+  - python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter
+  - cp dist\pyexe.exe %OUTPUT%
+  # Save the artifact immediately
+  - appveyor PushArtifact %OUTPUT%
 
 test_script:
   - SET PATH=%ORIGPATH%
-  - "cd %PROJDIR%\\tests"
   - pip install pytest
-  - "python -m pytest --exe=..\\%OUTPUT%"
+  - "python -m pytest -l --exe=%OUTPUT%"
 
-artifacts:
-  - path: py.py
-  - path: "%OUTPUT%"
+# artifacts:
+#   - path: pyexe.py
+#   - path: "%OUTPUT%"
 
 deploy:
   - provider: GitHub
