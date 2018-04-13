@@ -99,8 +99,8 @@ if Help:
     print("""Stand-Alone Python Interpreter
 
 Syntax: py.exe [--all] [--help] [-c (cmd) | -m (module) | (python file) [arg]]
-                    [-i] [-S] [-u] [-V] [-x]
-                    [--multiprocessing-fork (handle)]
+               [-i] [-S] [-u] [-V] [-x]
+               [--multiprocessing-fork (handle)]
 
 --all attempts to import all modules.
 -c runs the remaining options as a program.
@@ -132,10 +132,11 @@ if Unbuffered:
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', 0)
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
     sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', 0)
-if ImportSite:
-    import site  # noqa
-# Generate the globals/locals environment
 globenv = {}
+if ImportSite:
+    import site
+    site.main()
+# Generate the globals/locals environment
 for key in list(globals().keys()):
     if key.startswith('_'):  # or key == 'AllModules':
         globenv[key] = globals()[key]

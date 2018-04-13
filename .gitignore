@@ -101,4 +101,4 @@ ENV/
 .mypy_cache/
 
 # Our list
-pymodules.py
+modules_pyexe_list.py

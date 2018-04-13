@@ -58,6 +58,16 @@ print('%r' % [
     assert '16, 16' in out
 
 
+def testSiteValues(exepath):
+    for key in ('quit', 'exit', 'help', 'copyright', 'credits', 'license'):
+        out, err = runPyExe(exepath, input="""try:
+  print(%s)
+except Exception:
+  pass
+""" % key)
+        assert key in out.lower() or 'python.org' in out
+
+
 # Add tests for:
 #  command line options:
 #    -i / PYTHONINSPECT

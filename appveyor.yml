@@ -19,6 +19,8 @@ init:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
   - "python -m pip install pywin32 psutil six setuptools"
   - "python -m pip install pyinstaller"
+  - "del /q %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\hook-site.*"
+  - "del /q /s %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\__pycache__"
   - mkdir c:\u
   - cd c:\u
   - curl -L -O "https://github.com/upx/upx/releases/download/v3.94/upx394w.zip"
@@ -37,11 +39,8 @@ build_script:
 test_script:
   - SET PATH=%ORIGPATH%
   - pip install pytest
-  - "python -m pytest -l --exe=%OUTPUT%"
-
-# artifacts:
-#   - path: pyexe.py
-#   - path: "%OUTPUT%"
+  - cd tests
+  - "python -m pytest -l --exe=..\\%OUTPUT%"
 
 deploy:
   - provider: GitHub
