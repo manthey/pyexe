@@ -19,39 +19,14 @@ ExcludeModules = [
     "test", "tests",
     # Pointless modules
     'antigravity', 'this', 'lib2to3.__main__', 'unittest.__main__',
-    'win32traceutil',
-    # Much of win32com is really located in win32comext.  py2exe doesn't attach
-    # this properly, and I haven't gotten the work-around working.
-    'win32com.adsi', 'win32com.adsi.adsicon', 'win32com.authorization',
-    'win32com.authorization.authorization', 'win32com.axcontrol',
-    'win32com.axcontrol.axcontrol', 'win32com.axdebug',
-    'win32com.axdebug.debugger', 'win32com.axdebug.dump',
-    'win32com.axscript.asputil', 'win32com.axscript.client',
-    'win32com.axscript.client.debug', 'win32com.axscript.client.pydumper',
-    'win32com.axscript.client.pyscript_rexec', 'win32com.axscript.server',
-    'win32com.axscript.server.axsite', 'win32com.axscript.server.error',
-    'win32com.bits', 'win32com.bits.bits', 'win32com.directsound',
-    'win32com.directsound.directsound', 'win32com.ifilter',
-    'win32com.ifilter.ifilter', 'win32com.ifilter.ifiltercon',
-    'win32com.internet', 'win32com.internet.inetcon',
-    'win32com.internet.internet', 'win32com.mapi', 'win32com.mapi.emsabtags',
-    'win32com.mapi.exchange', 'win32com.mapi.exchdapi', 'win32com.mapi.mapi',
-    'win32com.mapi.mapiutil', 'win32com.propsys', 'win32com.propsys.pscon',
-    'win32com.shell', 'win32com.shell.shell', 'win32com.shell.shellcon',
-    'win32com.taskscheduler', 'win32com.taskscheduler.taskscheduler',
-    # These require additional dlls
-    'win32ui', 'win32uiole',
-    # These require win32ui
-    'pywin.debugger', 'pywin.dialogs', 'pywin.docking', 'pywin.framework',
-    'pywin.mfc', 'pywin.scintilla', 'pywin.tools', 'win32com.client.combrowse',
-    'win32com.client.tlbrowse',
     # Modules in appveyor that shouldn't be included, plus tkinter
     'Canvas', 'Dialog', 'FileDialog', 'FixTk', 'ScrolledText', 'SimpleDialog',
-    'Tix', 'Tkconstants', 'Tkdnd', 'Tkinter', '_LWPCookieJar',
-    '_MozillaCookieJar' '_markupbase', '_tkinter', 'adodbapi', 'altgraph',
-    'curses', 'dde', 'idlelib', 'tkColorChooser', 'tkCommonDialog',
-    'tkFileDialog', 'tkFont', 'tkMessageBox', 'tkSimpleDialog', 'tkinter',
-    'ttk', 'turtle', 'turtledemo', 'tcl', 'tk', 'Tkinter',
+    'Tix', 'Tkconstants', 'Tkdnd', 'Tkinter', '_markupbase', '_tkinter',
+    'adodbapi', 'altgraph', 'tkColorChooser', 'tkCommonDialog', 'tkFileDialog',
+    'tkFont', 'tkMessageBox', 'tkSimpleDialog', 'tkinter', 'ttk', 'turtle',
+    'turtledemo', 'tcl', 'tk', 'Tkinter',
+    # These cause test importation fail
+    'idlelib', 'win32traceutil',
 ]
 # Exclude examples, tests, and Tk.  Some of these won't exist in the default
 # installation
