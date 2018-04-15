@@ -53,16 +53,17 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
     if arg.startswith('-') and arg[1:2] != '-':
         for let in arg[1:]:
             if let == 'c':
-                DirectCmd = ' '.join(sys.argv[i+1+skip:])
-                DirectCmd = sys.argv[i+1+skip:]
+                DirectCmd = sys.argv[i+1+skip]
+                DirectArgv = ['-c'] + sys.argv[i+2+skip:]
+                skip = len(sys.argv)
             elif let == 'E':
                 UseEnvironment = False
             elif let == 'i':
                 Interactive = True
             elif let == 'm' and i+1 < len(sys.argv):
                 RunModule = sys.argv[i+1+skip]
-                RunArgv = sys.argv[i+1+skip:i+2+skip]
-                skip = 1
+                RunArgv = sys.argv[i+1+skip:]
+                skip = len(sys.argv)
                 break
             elif let == 'S':
                 ImportSite = False
@@ -72,7 +73,7 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 ShowVersion = True
             elif let == 'x':
                 SkipFirstLine = True
-            elif let in ('E', 'O'):
+            elif let in ('B', 'E', 'O', 's'):
                 # ignore these options
                 pass
             else:
@@ -81,26 +82,18 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
         continue
     elif arg == '--help' or arg == '-h' or arg == '/?':
         Help = True
-    elif arg == '--multiprocessing-fork':
-        skip = 1
-        import multiprocessing.forking
-        multiprocessing.forking.freeze_support()
     elif arg == '--version':
         ShowVersion = True
     elif arg.startswith('-'):
         Help = True
     elif not Start:
-        if RunModule:
-            RunArgv += sys.argv[i:]
-        else:
-            Start = i
+        Start = i
         break
 if Help:
     print("""Stand-Alone Python Interpreter
 
 Syntax: py.exe [--all] [--help] [-c (cmd) | -m (module) | (python file) [arg]]
                [-i] [-S] [-u] [-V] [-x]
-               [--multiprocessing-fork (handle)]
 
 --all attempts to import all modules.
 -c runs the remaining options as a program.
@@ -109,14 +102,13 @@ Syntax: py.exe [--all] [--help] [-c (cmd) | -m (module) | (python file) [arg]]
   PYTHONINSPECT=x
 --help, -h, or /? prints this message.
 -m runs the specified python module.
---multiprocessing-fork supports the multiprocessing module.
 -S supresses importing the site module
 -u runs in unbuffered mode; also PYTHONUNBUFFERED=x
 -V prints the version and exits (--version also works).
 -x skips the first line of a source file.
 If no file is specified and stdin is a terminal, the interactive interpreter is
   started.""")
-    # print sys.argv, repr(sys.argv)
+    print(repr(sys.argv))
     sys.exit(0)
 if ShowVersion:
     from py_version import Version, Description
@@ -141,25 +133,24 @@ for key in list(globals().keys()):
     if key.startswith('_'):  # or key == 'AllModules':
         globenv[key] = globals()[key]
 if Start:  # noqa
-    sys.argv = sys.argv[Start:]
+    sys.argv[:] = sys.argv[Start:]
     __name__ = '__main__'
     __file__ = sys.argv[0]
     sys.path[0:0] = [os.path.split(__file__)[0]]
-    # If I try to use the simplified global dictionary, multiprocessing doesn't
-    # work.
     with open(sys.argv[0]) as fptr:
         if SkipFirstLine:
             discard = fptr.readline()
         src = fptr.read()
+        # If we the simplified global dictionary, multiprocessing doesn't work
         six.exec_(src)
 elif RunModule:
     import runpy
-    sys.argv = RunArgv
+    sys.argv[:] = RunArgv
     runpy.run_module(RunModule, run_name='__main__')
 elif DirectCmd:
     sys.path[0:0] = ['']
-    sys.argv = DirectCmd
-    six.exec_(DirectCmd[0], globenv)
+    sys.argv[:] = DirectArgv
+    six.exec_(DirectCmd, globenv)
 else:
     if Interactive == 'check':
         Interactive = sys.stdin.isatty()
