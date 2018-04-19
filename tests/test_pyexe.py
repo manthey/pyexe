@@ -73,6 +73,37 @@ def testMultiprocessing(exepath):
     assert 'Difference: (0)' in out
 
 
+def testPySerialFromPip(exepath):
+    out, err = runPyExe(exepath, [
+        '-m', 'pip', 'install', '--no-cache-dir', '--target', '.',
+        '--upgrade', 'pyserial'])
+    assert 'Successfully installed pyserial' in out
+    out, err = runPyExe(exepath, input="""from six.moves import range
+import serial
+ports = []
+for port in range(1, 50):
+  try:
+    ports.append(serial.Serial('COM%d' % port))
+  except Exception:
+    pass
+print('%r' % ports)
+""")
+    assert 'COM' in out or '[]' in out
+
+
+def testSympyFromPip(exepath):
+    out, err = runPyExe(exepath, [
+        '-m', 'pip', 'install', '--no-cache-dir', '--target', '.',
+        '--upgrade', 'sympy'])
+    assert 'Successfully installed' in out and 'sympy' in out
+    out, err = runPyExe(exepath, input="""import sympy
+x = sympy.Symbol('x')
+result = sympy.simplify(1/x + (x*sympy.sin(x) - 1)/x)
+print(result)
+""")
+    assert 'sin(x)' in out
+
+
 # Add tests for:
 #  command line options:
 #    -i / PYTHONINSPECT
@@ -83,4 +114,4 @@ def testMultiprocessing(exepath):
 #  with source file
 #    -x
 #  stdin
-#  pip install serial and then use it
+#  pip install sympy and then use it

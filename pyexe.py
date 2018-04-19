@@ -121,9 +121,10 @@ if Unbuffered is False and UseEnvironment:
     if os.environ.get('PYTHONUNBUFFERED'):
         Unbuffered = True
 if Unbuffered:
-    sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', 0)
-    sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-    sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', 0)
+    bufsize = 1 if sys.version_info >= (3, ) else 0
+    sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
+    sys.stderr = os.fdopen(sys.stderr.fileno(), 'a+', bufsize)
 globenv = {}
 if ImportSite:
     import site
