@@ -68,6 +68,11 @@ except Exception:
         assert key in out.lower() or 'python.org' in out
 
 
+def testMultiprocessing(exepath):
+    out, err = runPyExe(exepath, ['multiprocessing_script.py'])
+    assert 'Difference: (0)' in out
+
+
 # Add tests for:
 #  command line options:
 #    -i / PYTHONINSPECT
@@ -75,7 +80,6 @@ except Exception:
 #    -m
 #    -u / PYTHONUNBUFFERED
 #    -S
-#  multiprocessing
 #  with source file
 #    -x
 #  stdin

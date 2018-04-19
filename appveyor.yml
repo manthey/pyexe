@@ -17,8 +17,11 @@ init:
   - SET PROJDIR=%cd%
   - SET ORIGPATH=%PATH%
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-  - "python -m pip install pywin32 psutil six setuptools"
-  - "python -m pip install pyinstaller"
+  - python -m pip install --upgrade pip
+  - python -m pip install --upgrade setuptools
+  - python -m pip install pywin32 psutil six setuptools
+  - python -m pip install pyinstaller
+  # Remvoe the site module hook from PyInstaller; we need the site module as is
   - "del /q %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\hook-site.*"
   - "del /q /s %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\__pycache__"
   - mkdir c:\u
@@ -28,6 +31,10 @@ init:
   - cd %PROJDIR%
 
 build_script:
+  # Copy a build hook to PyInstaller to include the cacerts.pem file for pip.
+  - "copy hooks\\hook*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\."
+  # Replace the multiprocessing loader hook
+  - "copy hooks\\pyi_rth*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader\\rthooks\\."
   - python modules_pyexe.py pyexe.py
   # Save the artifact immediately
   - appveyor PushArtifact pyexe.py
