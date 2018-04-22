@@ -15,7 +15,7 @@ See the appveyor script for build instructions.
 
 Python is most useful with additional modules.  The stand-alone executable can use pip to install modules from pypi to the local directory.  For instance:
 
-```python
+```bash
 py36-64.exe -m pip install --no-cache-dir --target . --upgrade sympy
 ```
 
