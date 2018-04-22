@@ -21,6 +21,8 @@ def testVersion(exepath):
     assert out.startswith('Stand-Alone Python Interpreter')
     out, err = runPyExe(exepath, ['-V'])
     assert out.startswith('Stand-Alone Python Interpreter')
+    out, err = runPyExe(exepath, ['-V', '-V'])
+    assert 'psutil' in out and 'pywin32' in out
 
 
 def testDirectCommand(exepath):
@@ -114,4 +116,3 @@ print(result)
 #  with source file
 #    -x
 #  stdin
-#  pip install sympy and then use it
