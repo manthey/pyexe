@@ -11,7 +11,12 @@ dlls, excepting tkinter.
 
 See the appveyor script for build instructions.
 
-Go ahead and use the executable or source as you see fit.  Credit is appreciated, but not necessary.  I accept no liability.  
+## Installing other modules
 
-If you found this useful, let me know.  Please file any issues.  Obviously, one could include more or less libraries to either add features or reduce the size of the executable.  I don't intend to make alternate versions with different libraries.
+Python is most useful with additional modules.  The stand-alone executable can use pip to install modules from pypi to the local directory.  For instance:
 
+```python
+py36-64.exe -m pip install --no-cache-dir --target . --upgrade sympy
+```
+
+Use `-m pip` to run the pip module.  Use `--no-cache-dir` to avoid writing files to the user's data directory.  Use `--target .` to install to the current directory, allowing you to import the modules easily.  Use `--upgrade` to replace existing files, such as the common `bin` directory.  Note that using `--upgrade` will overwrite or discard existing files, which may not be what you want (the `bin` directory will end up with just files for the most recently installed package).
