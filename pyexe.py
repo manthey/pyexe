@@ -30,14 +30,35 @@ def alternate_raw_input(prompt=None):
     return raw_input('')
 
 
+def print_version(details=1):
+    """
+    Print the current version.
+
+    Enter: details: if 2, print more details.
+    """
+    from py_version import Version, Description
+
+    print('%s, Version %s' % (Description, Version))
+    if details > 1:
+        print('Python %s' % (sys.version))
+        import importlib
+        # pywin32
+        import win32api
+        fileinfo = win32api.GetFileVersionInfo(win32api.__file__, '\\')
+        print('pywin32: %s' % str(fileinfo['FileVersionLS'] >> 16))
+        for module_name in ('pip', 'psutil', 'setuptools', 'six'):
+            module = importlib.import_module(module_name)
+            print('%s: %s' % (module_name, module.__version__))
+
+
 if hasattr(sys, 'frozen'):
     delattr(sys, 'frozen')
 Help = False
 DirectCmd = None
 ImportSite = True
 Interactive = 'check'
+PrintVersion = 0
 RunModule = False
-ShowVersion = False
 SkipFirstLine = False
 Start = None
 Unbuffered = False
@@ -70,7 +91,7 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
             elif let == 'u':
                 Unbuffered = True
             elif let == 'V':
-                ShowVersion = True
+                PrintVersion += 1
             elif let == 'x':
                 SkipFirstLine = True
             elif let in ('B', 'E', 'O', 's'):
@@ -83,19 +104,19 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
     elif arg == '--help' or arg == '-h' or arg == '/?':
         Help = True
     elif arg == '--version':
-        ShowVersion = True
+        PrintVersion += 1
     elif arg.startswith('-'):
         Help = True
     elif not Start:
         Start = i
         break
 if Help:
-    print("""Stand-Alone Python Interpreter
-
-Syntax: py.exe [--all] [--help] [-c (cmd) | -m (module) | (python file) [arg]]
-               [-i] [-S] [-u] [-V] [-x]
-
+    from py_version import Version, Description
+    print('%s, Version %s' % (Description, Version))
+    print('usage: %s [option] ... [-c cmd | -m mod | file | -] [arg] ...' % sys.argv[0])
+    print("""Stand-alone specific options:
 --all attempts to import all modules.
+General Python options and arguments (and corresponding environment variables):
 -c runs the remaining options as a program.
 -E ignores environment variables.
 -i forces a prompt even if stdin does not appear to be a terminal; also
@@ -110,9 +131,8 @@ If no file is specified and stdin is a terminal, the interactive interpreter is
   started.""")
     print(repr(sys.argv))
     sys.exit(0)
-if ShowVersion:
-    from py_version import Version, Description
-    print('%s, Version %s' % (Description, Version))
+if PrintVersion:
+    print_version(PrintVersion)
     sys.exit(0)
 if Interactive == 'check' and UseEnvironment:
     if os.environ.get('PYTHONINSPECT'):
