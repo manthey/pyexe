@@ -35,15 +35,19 @@ build_script:
   - "copy hooks\\hook*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\."
   # Replace the multiprocessing loader hook
   - "copy hooks\\pyi_rth*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader\\rthooks\\."
+  # Replace the stage 3 importer
+  - "copy hooks\\pyimod03_importers.py %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader\\."
   - python modules_pyexe.py pyexe.py
   # Save the artifact immediately
   - appveyor PushArtifact pyexe.py
-  - python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter
+  - python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py
   - cp dist\pyexe.exe %OUTPUT%
   # Save the artifact immediately
   - appveyor PushArtifact %OUTPUT%
 
 test_script:
+  # Sometimes we send test data to this directory
+  - mkdir c:\\temp
   - SET PATH=%ORIGPATH%
   - pip install pytest
   - cd tests

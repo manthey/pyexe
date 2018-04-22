@@ -1,7 +1,7 @@
-import time
 import multiprocessing
 import random
 import sys
+import time
 from six.moves import range
 
 

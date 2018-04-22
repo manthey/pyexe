@@ -4,9 +4,10 @@
 
 I have often wanted a stand-alone version of python that is a single Windows executable.
 
-It consists of the most recent versions of Python (with builds for 2.7 32-bit, 2.7 64-bit, 3.5 32-bit,
-3.5 64-bit, and 3.6 64-bit), pywin32, psutil, six, and includes all packages that can be included
-without additional dlls, excepting tkinter.
+It consists of the most recent versions of Python (with builds for 2.7, 3.5,
+and 3.6 each in 32-bit and 64-bit versions), pywin32, psutil, six, pip, 
+setuptools, and includes all packages that can be included without additional 
+dlls, excepting tkinter.
 
 See the appveyor script for build instructions.
 
