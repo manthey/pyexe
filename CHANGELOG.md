@@ -1,5 +1,11 @@
 # Release Notes
 
+## Unreleased
+
+### Changes
+
+- Added support for zipapps.
+
 ## Version 12
 
 ### Changes
