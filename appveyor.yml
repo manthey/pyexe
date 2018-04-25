@@ -51,7 +51,14 @@ test_script:
   - SET PATH=%ORIGPATH%
   - pip install pytest
   - cd tests
-  - "python -m pytest -l --exe=..\\%OUTPUT%"
+  # Make sure we only have original files here.
+  - git clean -fxd .
+  - "python -m pytest -l --cache-clear --exe=..\\%OUTPUT%"
+  # We can test the tests against the master python.  We have to exclude a few
+  # tests that only work on the stand-alone build.  
+  # Make sure we only have original files here.
+  - git clean -fxd .
+  - 'python -m pytest -l --cache-clear --exe=%PYTHON%\python -k "not Version and not Help and not AllFlag"'
 
 deploy:
   - provider: GitHub

@@ -27,6 +27,14 @@ ExcludeModules = [
     'turtledemo', 'tcl', 'tk', 'Tkinter',
     # These cause test importation fail
     'idlelib', 'win32traceutil',
+    # These cause --all flag to fail
+    'pywin.debugger', 'pywin.dialogs.ideoptions',
+    'pywin.framework.dbgcommands', 'pywin.framework.editor',
+    'pywin.framework.interact', 'pywin.framework.intpyapp',
+    'pywin.framework.startup', 'pywin.framework.stdin',
+    'pywin.framework.winout', 'pywin.scintilla', 'pywin.tools.TraceCollector',
+    'win32com.axdebug.debugger', 'win32com.axdebug.dump',
+    'win32com.axscript.client.debug',
 ]
 # Exclude examples, tests, and Tk.  Some of these won't exist in the default
 # installation

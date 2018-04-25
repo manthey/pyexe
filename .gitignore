@@ -101,4 +101,5 @@ ENV/
 .mypy_cache/
 
 # Our list
+.pytest_cache/
 modules_pyexe_list.py

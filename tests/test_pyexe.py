@@ -1,3 +1,4 @@
+import os
 import pytest
 import subprocess
 
@@ -7,11 +8,19 @@ def exepath(request):
     return request.config.getoption("--exe")
 
 
-def runPyExe(exepath, options=[], input=''):
+def runPyExe(exepath, options=[], input='', env={}):
+    """
+    Enter: exepath: the fixture parameter.
+           options: command line options to pass to the executable.
+           input: data to pass via stdin.
+           env: additional environment parameters.
+    """
     cmd = [exepath] + options
+    cmdenv = os.environ.copy()
+    cmdenv.update(env)
     proc = subprocess.Popen(
         cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+        stderr=subprocess.PIPE, env=cmdenv)
     out, err = proc.communicate(input)
     return out, err
 
@@ -21,7 +30,10 @@ def testVersion(exepath):
     assert out.startswith('Stand-Alone Python Interpreter')
     out, err = runPyExe(exepath, ['-V'])
     assert out.startswith('Stand-Alone Python Interpreter')
+    assert 'psutil' not in out
     out, err = runPyExe(exepath, ['-V', '-V'])
+    assert 'psutil' in out and 'pywin32' in out
+    out, err = runPyExe(exepath, ['-VV'])
     assert 'psutil' in out and 'pywin32' in out
 
 
@@ -106,13 +118,59 @@ print(result)
     assert 'sin(x)' in out
 
 
+def testHelp(exepath):
+    for opt in ('--help', '-h', '-?', '/?'):
+        out, err = runPyExe(exepath, [opt])
+        assert 'Stand-alone specific options' in out
+
+
+def testFromStdin(exepath):
+    noblanks = """# No blank lines
+def add(a, b):
+  return a + b
+print(sum([add(x, x + 1) for x in range(10)]))
+"""
+    blanks = """# Blank lines
+
+def add(a, b):
+  return a + b
+
+print(sum([add(x, x + 1) for x in range(10)]))
+"""
+    out, err = runPyExe(exepath, input=noblanks)
+    assert '100' in out
+    # With -i, we need to have blank lines, since the processing is done
+    # differently.
+    out, err = runPyExe(exepath, ['-i'], input=noblanks)
+    # assert 'SyntaxError: invalid syntax' in err
+    out, err = runPyExe(exepath, ['-i'], input=blanks)
+    # assert '100' in out
+    # Running a command first shouldn't affect the input processing.
+    out, err = runPyExe(exepath, ['-i', '-c', 'import sys'], input=noblanks)
+    assert 'SyntaxError: invalid syntax' in err
+    out, err = runPyExe(exepath, ['-i', '-c', 'import sys'], input=blanks)
+    assert '100' in out
+    # Using an environment variable should check for a tty
+    out, err = runPyExe(exepath, input=noblanks, env={'PYTHONINSPECT': 'true'})
+    assert '100' in out
+
+
+def testHyphen(exepath):
+    out, err = runPyExe(exepath, ['-', 'param1', '\'param2\''], input="""import sys
+print(sys.argv)
+""")
+    assert """['-', 'param1', "'param2'"]""" in out
+
+
+def testAllFlag(exepath):
+    out, err = runPyExe(exepath, ['--all', '-c', 'import sys;print(sorted(sys.modules.keys()))'])
+    assert 'psutil' in out and 'multiprocessing' in out
+
+
 # Add tests for:
 #  command line options:
-#    -i / PYTHONINSPECT
-#    -h / --help /?
-#    -m
 #    -u / PYTHONUNBUFFERED
 #    -S
+#    -E
 #  with source file
 #    -x
-#  stdin
