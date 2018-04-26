@@ -166,20 +166,26 @@ if not NoSiteFlag:
     site.main()
 # Generate the globals/locals environment
 for key in list(globals().keys()):
-    if key.startswith('_'):  # or key == 'AllModules':
+    if key.startswith('_'):
         globenv[key] = globals()[key]
 if Start:  # noqa
+    import zipfile
     sys.argv[:] = sys.argv[Start:]
     __name__ = '__main__'
     __file__ = sys.argv[0]
-    sys.path[0:0] = [os.path.split(__file__)[0]]
-    with open(sys.argv[0]) as fptr:
-        if SkipFirstLine:
-            discard = fptr.readline()
-        src = fptr.read()
-        # If we use the simplified global dictionary, multiprocessing doesn't
-        # work (this should be investigated further)
-        six.exec_(src)
+    if zipfile.is_zipfile(__file__):
+        sys.path[0:0] = [__file__]
+        with zipfile.ZipFile(__file__) as zptr:
+            src = zptr.open('__main__.py').read()
+    else:
+        sys.path[0:0] = [os.path.split(__file__)[0]]
+        with open(__file__) as fptr:
+            if SkipFirstLine:
+                discard = fptr.readline()
+            src = fptr.read()
+    # If we use the simplified global dictionary, multiprocessing doesn't work
+    # (this should be investigated further)
+    six.exec_(src)
 elif RunModule:
     import runpy
     sys.argv[:] = RunModuleArgv

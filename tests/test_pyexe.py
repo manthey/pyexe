@@ -83,7 +83,7 @@ except Exception:
 
 
 def testMultiprocessing(exepath):
-    out, err = runPyExe(exepath, ['multiprocessing_script.py'])
+    out, err = runPyExe(exepath, ['sample_multiprocessing.py'])
     assert 'Difference: (0)' in out
 
 
@@ -165,6 +165,11 @@ print(sys.argv)
 def testAllFlag(exepath):
     out, err = runPyExe(exepath, ['--all', '-c', 'import sys;print(sorted(sys.modules.keys()))'])
     assert 'psutil' in out and 'multiprocessing' in out
+
+
+def testZipApp(exepath):
+    out, err = runPyExe(exepath, ['..\\sample_zipapp.pyz'])
+    assert '15' in out
 
 
 # Add tests for:
