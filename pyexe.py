@@ -62,9 +62,9 @@ Interactive = None
 InteractiveArgv = None
 PrintVersion = 0
 RunCommand = None
+RunFile = None
 RunModule = None
 SkipFirstLine = False
-Start = None
 Unbuffered = False
 UseEnvironment = True
 skip = 0
@@ -110,9 +110,8 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
     elif arg == '--check-hash-based-pycs':
         # ignore this option
         skip += 1
-        pass
     elif arg == '--all':
-        continue
+        pass
     elif arg == '--help' or arg == '/?':
         Help = True
     elif arg == '--version':
@@ -121,70 +120,73 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
         Interactive = 'check'
         InteractiveArgv = ['-'] + sys.argv[i+1+skip:]
         skip = len(sys.argv)
-        break
     elif arg.startswith('-'):
         Help = True
-    elif not Start:
-        Start = i + skip
-        break
+    elif not RunFile:
+        RunFile = sys.argv[i+skip]
+        RunFileArgv = sys.argv[i+skip:]
+        skip = len(sys.argv)
 if Help:
     print_version(0)
     print('usage: %s [option] ... [-c cmd | -m mod | file | -] [arg] ...' % sys.argv[0])
     print("""Stand-alone specific options:
---all attempts to import all modules.
+--all  : imports all bundled modules.
 General Python options and arguments (and corresponding environment variables):
--c runs the remaining options as a program.
--E ignores environment variables.
--i forces a prompt even if stdin does not appear to be a terminal; also
-  PYTHONINSPECT=x
---help, -h, or /? prints this message.
--m runs the specified python module.
--S supresses importing the site module
--u runs in unbuffered mode; also PYTHONUNBUFFERED=x
--V prints the version and exits (--version also works).
--x skips the first line of a source file.
-If no file is specified and stdin is a terminal, the interactive interpreter is
-  started.""")
+-c cmd : program passed in as string (terminates option list)
+-E     : ignore PYTHON* environment variables
+-h     : print this help message and exit (also --help, /?)
+-i     : inspect interactively after running script; forces a prompt even
+         if stdin does not appear to be a terminal; also PYTHONINSPECT=x
+-m mod : run library module as a script (terminates option list)
+-S     : don't imply 'import site' on initialization
+-u     : unbuffered binary stdout and stderr; also PYTHONUNBUFFERED=x
+         see man page for details on internal buffering relating to '-u'
+-V     : print the Python version number and exit (also --version).  Use twice
+         for more complete information.
+-x     : skip first line of source, allowing use of non-Unix forms of #!cmd""")
     sys.exit(0)
 if PrintVersion:
     print_version(PrintVersion)
     sys.exit(0)
-if Interactive is not True and UseEnvironment:
-    if os.environ.get('PYTHONINSPECT'):
+if UseEnvironment:
+    if Interactive is not True and os.environ.get('PYTHONINSPECT'):
         Interactive = 'check'
-if Unbuffered is False and UseEnvironment:
-    if os.environ.get('PYTHONUNBUFFERED'):
+    if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
         Unbuffered = True
 bufsize = 1 if sys.version_info >= (3, ) else 0
 if Unbuffered:
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
     sys.stderr = os.fdopen(sys.stderr.fileno(), 'a+', bufsize)
-globenv = {}
 if not NoSiteFlag:
     import site
     site.main()
 # Generate the globals/locals environment
+globenv = {}
 for key in list(globals().keys()):
     if key.startswith('_'):
         globenv[key] = globals()[key]
-if Start:  # noqa
+if RunFile:
+    # We can't use runpy.run_path for (a) skipped first line, (b) Python 2.7
+    # and zipapps (pyz files).  Rather than use run_path in the limited cases
+    # where it can be used, we use one code path for executing files in
+    # general.
     import zipfile
-    sys.argv[:] = sys.argv[Start:]
+    sys.argv[:] = RunFileArgv
     __name__ = '__main__'
-    __file__ = sys.argv[0]
-    if zipfile.is_zipfile(__file__):
-        sys.path[0:0] = [__file__]
-        with zipfile.ZipFile(__file__) as zptr:
+    __file__ = RunFile
+    if zipfile.is_zipfile(RunFile):
+        sys.path[0:0] = [RunFile]
+        with zipfile.ZipFile(RunFile) as zptr:
             src = zptr.open('__main__.py').read()
     else:
-        sys.path[0:0] = [os.path.split(__file__)[0]]
-        with open(__file__) as fptr:
+        sys.path[0:0] = [os.path.split(RunFile)[0]]
+        with open(RunFile) as fptr:
             if SkipFirstLine:
                 discard = fptr.readline()
             src = fptr.read()
-    # If we use the simplified global dictionary, multiprocessing doesn't work
-    # (this should be investigated further)
+    # If we use anything other than the actual globals() dictionary,
+    # multiprocessing doesn't work.
     six.exec_(src)
 elif RunModule:
     import runpy

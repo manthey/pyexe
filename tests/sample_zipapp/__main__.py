@@ -1,6 +1,3 @@
-import sys
-print(sys.argv)
-print(sys.path)
 from samplemod import part1
 from samplemod import part2
 

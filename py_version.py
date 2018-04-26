@@ -2,5 +2,5 @@
 
 import sys
 
-Version = sys.version.split()[0] + '.12'
+Version = sys.version.split()[0] + '.13'
 Description = 'Stand-Alone Python Interpreter'

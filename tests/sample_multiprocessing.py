@@ -18,7 +18,6 @@ def calculateSum(idx, values, weight, results):
 
 
 if __name__ == '__main__':
-    print(sys.executable)
     results = multiprocessing.Array('d', range(numJobs))
     multiprocessing.set_executable(sys.executable)
     jobs = []
