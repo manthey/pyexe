@@ -89,7 +89,10 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 RunModule = sys.argv[i+1+skip]
                 RunModuleArgv = sys.argv[i+1+skip:]
                 skip = len(sys.argv)
-                break
+            elif let == 's':
+                # We don't have to do anything for this flag, since we never
+                # have a local user site-packages directory in stand-alone mode
+                pass
             elif let == 'S':
                 NoSiteFlag = True
             elif let == 'u':
@@ -98,13 +101,12 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 PrintVersion += 1
             elif let == 'x':
                 SkipFirstLine = True
-            elif let in ('b', 'B', 'd', 'I', 'O', 'q', 's', 'v'):
+            elif let in ('b', 'B', 'd', 'I', 'O', 'q', 'v'):
                 # ignore these options
                 pass
             elif let in ('W', 'X'):
                 # ignore these options
                 skip += 1
-                pass
             else:
                 Help = True
     elif arg == '--check-hash-based-pycs':
@@ -138,6 +140,7 @@ General Python options and arguments (and corresponding environment variables):
 -i     : inspect interactively after running script; forces a prompt even
          if stdin does not appear to be a terminal; also PYTHONINSPECT=x
 -m mod : run library module as a script (terminates option list)
+-s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
 -S     : don't imply 'import site' on initialization
 -u     : unbuffered binary stdout and stderr; also PYTHONUNBUFFERED=x
          see man page for details on internal buffering relating to '-u'
