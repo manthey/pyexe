@@ -143,7 +143,10 @@ General Python options and arguments (and corresponding environment variables):
          see man page for details on internal buffering relating to '-u'
 -V     : print the Python version number and exit (also --version).  Use twice
          for more complete information.
--x     : skip first line of source, allowing use of non-Unix forms of #!cmd""")
+-x     : skip first line of source, allowing use of non-Unix forms of #!cmd
+file   : program read from script file
+-      : program read from stdin (default; interactive mode if a tty)
+arg ...: arguments passed to program in sys.argv[1:]""")
     sys.exit(0)
 if PrintVersion:
     print_version(PrintVersion)
