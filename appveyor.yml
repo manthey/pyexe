@@ -61,7 +61,7 @@ test_script:
   # tests that only work on the stand-alone build.
   # Make sure we only have original files here.
   - git clean -fxd .
-  - 'python -m pytest -l --cache-clear --exe=%PYTHON%\python -k "not Version and not Help and not AllFlag"'
+  - 'python -m pytest -l --cache-clear --exe=%PYTHON%\python -m "not pyexe"'
 
 deploy:
   - provider: GitHub

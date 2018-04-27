@@ -25,6 +25,7 @@ def runPyExe(exepath, options=[], input='', env={}):
     return out, err
 
 
+@pytest.mark.pyexe
 def testVersion(exepath):
     out, err = runPyExe(exepath, ['--version'])
     assert out.startswith('Stand-Alone Python Interpreter')
@@ -118,6 +119,7 @@ print(result)
     assert 'sin(x)' in out
 
 
+@pytest.mark.pyexe
 def testHelp(exepath):
     for opt in ('--help', '-h', '-?', '/?'):
         out, err = runPyExe(exepath, [opt])
@@ -142,9 +144,9 @@ print(sum([add(x, x + 1) for x in range(10)]))
     # With -i, we need to have blank lines, since the processing is done
     # differently.
     out, err = runPyExe(exepath, ['-i'], input=noblanks)
-    # assert 'SyntaxError: invalid syntax' in err
+    assert 'SyntaxError: invalid syntax' in err
     out, err = runPyExe(exepath, ['-i'], input=blanks)
-    # assert '100' in out
+    assert '100' in out
     # Running a command first shouldn't affect the input processing.
     out, err = runPyExe(exepath, ['-i', '-c', 'import sys'], input=noblanks)
     assert 'SyntaxError: invalid syntax' in err
@@ -162,6 +164,7 @@ print(sys.argv)
     assert """['-', 'param1', "'param2'"]""" in out
 
 
+@pytest.mark.pyexe
 def testAllFlag(exepath):
     out, err = runPyExe(exepath, ['--all', '-c', 'import sys;print(sorted(sys.modules.keys()))'])
     assert 'psutil' in out and 'multiprocessing' in out
