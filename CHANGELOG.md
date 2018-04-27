@@ -5,6 +5,7 @@
 ### Changes
 
 - Added support for zipapps.
+- Added support for `PYTHONPATH`.
 
 ## Version 12
 

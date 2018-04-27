@@ -131,11 +131,9 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
 if Help:
     print_version(0)
     print('usage: %s [option] ... [-c cmd | -m mod | file | -] [arg] ...' % sys.argv[0])
-    print("""Stand-alone specific options:
---all  : imports all bundled modules.
-General Python options and arguments (and corresponding environment variables):
+    print("""Options and arguments (and corresponding environment variables):
 -c cmd : program passed in as string (terminates option list)
--E     : ignore PYTHON* environment variables
+-E     : ignore PYTHON* environment variables (such as PYTHONPATH)
 -h     : print this help message and exit (also --help, /?)
 -i     : inspect interactively after running script; forces a prompt even
          if stdin does not appear to be a terminal; also PYTHONINSPECT=x
@@ -149,7 +147,13 @@ General Python options and arguments (and corresponding environment variables):
 -x     : skip first line of source, allowing use of non-Unix forms of #!cmd
 file   : program read from script file
 -      : program read from stdin (default; interactive mode if a tty)
-arg ...: arguments passed to program in sys.argv[1:]""")
+arg ...: arguments passed to program in sys.argv[1:]
+Stand-alone specific options:
+--all  : imports all bundled modules.
+
+Other environment variables:
+PYTHONPATH   : ';'-separated list of directories prefixed to the
+               default module search path.  The result is sys.path.""")
     sys.exit(0)
 if PrintVersion:
     print_version(PrintVersion)
@@ -159,6 +163,8 @@ if UseEnvironment:
         Interactive = 'check'
     if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
         Unbuffered = True
+    if os.environ.get('PYTHONPATH'):
+        sys.path[0:0] = os.environ.get('PYTHONPATH').split(os.pathsep)
 bufsize = 1 if sys.version_info >= (3, ) else 0
 if Unbuffered:
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)

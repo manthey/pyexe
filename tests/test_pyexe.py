@@ -236,3 +236,10 @@ def testUnbuffered(exepath):
     assert out[1][0] - out[0][0] > 0.5
     out, err = runPyExeLines(exepath, ['-E', '-c', delayed], env={'PYTHONUNBUFFERED': 'true'})
     assert out[1][0] - out[0][0] < 0.5
+
+
+def testPythonPath(exepath):
+    out, err = runPyExe(exepath, ['sample_print_path.py'], env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
+    assert '\'C:\\\\Temp\'' in out
+    out, err = runPyExe(exepath, ['-E', 'sample_print_path.py'], env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
+    assert '\'C:\\\\Temp\'' not in out
