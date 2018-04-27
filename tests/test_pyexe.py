@@ -81,6 +81,9 @@ except Exception:
   pass
 """ % key)
         assert key in out.lower() or 'python.org' in out
+    out, err = runPyExe(exepath, ['-S'], input='print(quit)')
+    assert 'quit' not in out
+    assert 'is not defined' in err
 
 
 def testMultiprocessing(exepath):
@@ -187,5 +190,4 @@ def testSkipHeader(exepath):
 # Add tests for:
 #  command line options:
 #    -u / PYTHONUNBUFFERED
-#    -S
 #    -E
