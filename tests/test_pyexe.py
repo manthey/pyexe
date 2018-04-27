@@ -172,10 +172,17 @@ def testZipApp(exepath):
     assert '15' in out
 
 
+def testSkipHeader(exepath):
+    out, err = runPyExe(exepath, ['sample_skip_header.py'])
+    assert 'SyntaxError: invalid syntax' in err
+    out, err = runPyExe(exepath, ['-x', 'sample_skip_header.py'])
+    assert 'skipped header' in out
+    out, err = runPyExe(exepath, ['sample_no_header.py'])
+    assert 'no header' in out
+
+
 # Add tests for:
 #  command line options:
 #    -u / PYTHONUNBUFFERED
 #    -S
 #    -E
-#  with source file
-#    -x
