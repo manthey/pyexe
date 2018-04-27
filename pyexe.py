@@ -60,6 +60,7 @@ Help = False
 NoSiteFlag = False
 Interactive = None
 InteractiveArgv = None
+Isolated = False
 PrintVersion = 0
 RunCommand = None
 RunFile = None
@@ -85,6 +86,9 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 Help = True
             elif let == 'i':
                 Interactive = True
+            elif let == 'I' and sys.version_info > (3, ):
+                UseEnvironment = False
+                Isolated = True
             elif let == 'm' and i+1 < len(sys.argv):
                 RunModule = sys.argv[i+1+skip]
                 RunModuleArgv = sys.argv[i+1+skip:]
@@ -101,7 +105,7 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 PrintVersion += 1
             elif let == 'x':
                 SkipFirstLine = True
-            elif let in ('b', 'B', 'd', 'I', 'O', 'q', 'v'):
+            elif let in ('b', 'B', 'd', 'O', 'q', 'v'):
                 # ignore these options
                 pass
             elif let in ('W', 'X'):
@@ -136,8 +140,10 @@ if Help:
 -E     : ignore PYTHON* environment variables (such as PYTHONPATH)
 -h     : print this help message and exit (also --help, /?)
 -i     : inspect interactively after running script; forces a prompt even
-         if stdin does not appear to be a terminal; also PYTHONINSPECT=x
--m mod : run library module as a script (terminates option list)
+         if stdin does not appear to be a terminal; also PYTHONINSPECT=x""")
+    if sys.version_info > (3, ):
+        print("""-I     : isolate Python from the user's environment (implies -E and -s)""")
+    print("""-m mod : run library module as a script (terminates option list)
 -s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
 -S     : don't imply 'import site' on initialization
 -u     : unbuffered binary stdout and stderr; also PYTHONUNBUFFERED=x
@@ -192,7 +198,8 @@ if RunFile:
         with zipfile.ZipFile(RunFile) as zptr:
             src = zptr.open('__main__.py').read()
     else:
-        sys.path[0:0] = [os.path.split(RunFile)[0]]
+        if not Isolated:
+            sys.path[0:0] = [os.path.split(RunFile)[0]]
         with open(RunFile) as fptr:
             if SkipFirstLine:
                 discard = fptr.readline()
@@ -205,13 +212,15 @@ elif RunModule:
     sys.argv[:] = RunModuleArgv
     runpy.run_module(RunModule, run_name='__main__')
 elif RunCommand is not None:
-    sys.path[0:0] = ['']
+    if not Isolated:
+        sys.path[0:0] = ['']
     sys.argv[:] = RunCommandArgv
     six.exec_(RunCommand, globenv)
 elif Interactive is None:
     Interactive = 'check'
 if Interactive:
-    sys.path[0:0] = ['']
+    if not Isolated:
+        sys.path[0:0] = ['']
     if InteractiveArgv:
         sys.argv[:] = InteractiveArgv
     if Interactive is True or sys.stdin.isatty():

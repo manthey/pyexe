@@ -9,6 +9,12 @@ def exepath(request):
     return request.config.getoption("--exe")
 
 
+@pytest.fixture
+def pyversion(exepath):
+    out, err = runPyExe(exepath, ['--version'])
+    return (int(part) for part in (out + err).split()[1].split('.'))
+
+
 def runPyExe(exepath, options=[], input=None, env={}):
     """
     Run the specified exe with command line options, an option input to stdin,
@@ -239,7 +245,19 @@ def testUnbuffered(exepath):
 
 
 def testPythonPath(exepath):
-    out, err = runPyExe(exepath, ['sample_print_path.py'], env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
+    out, err = runPyExe(exepath, ['sample_print_path.py'],
+                        env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
     assert '\'C:\\\\Temp\'' in out
-    out, err = runPyExe(exepath, ['-E', 'sample_print_path.py'], env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
+    out, err = runPyExe(exepath, ['-E', 'sample_print_path.py'],
+                        env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
     assert '\'C:\\\\Temp\'' not in out
+
+
+def testIsolateFlag(exepath, pyversion):
+    if pyversion >= (3, ):
+        out, err = runPyExe(exepath, ['sample_print_path.py'],
+                            env={'PYTHONPATH': 'C:\\Temp'})
+        assert '\'\'' in out and '\'C:\\\\Temp\'' in out
+        out, err = runPyExe(exepath, ['-I', 'sample_print_path.py'],
+                            env={'PYTHONPATH': 'C:\\Temp'})
+        assert '\'\'' not in out and '\'C:\\\\Temp\'' not in out
