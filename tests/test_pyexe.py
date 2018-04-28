@@ -1,6 +1,7 @@
 import os
 import pytest
 import subprocess
+import time
 
 
 @pytest.fixture
@@ -8,12 +9,23 @@ def exepath(request):
     return request.config.getoption("--exe")
 
 
-def runPyExe(exepath, options=[], input='', env={}):
+@pytest.fixture
+def pyversion(exepath):
+    out, err = runPyExe(exepath, ['--version'])
+    return (int(part) for part in (out + err).split()[1].split('.'))
+
+
+def runPyExe(exepath, options=[], input=None, env={}):
     """
+    Run the specified exe with command line options, an option input to stdin,
+    and with a modified environment.
+
     Enter: exepath: the fixture parameter.
            options: command line options to pass to the executable.
            input: data to pass via stdin.
            env: additional environment parameters.
+    Exit:  out: stdout from the process.
+           err: stderr from the process.
     """
     cmd = [exepath] + options
     cmdenv = os.environ.copy()
@@ -21,6 +33,39 @@ def runPyExe(exepath, options=[], input='', env={}):
     proc = subprocess.Popen(
         cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, env=cmdenv)
+    out, err = proc.communicate(input)
+    return out, err
+
+
+def runPyExeLines(exepath, options=[], input=None, env={}):
+    """
+    Run the specified exe with command line options, an option input to stdin,
+    and with a modified environment.  Return line-by-line results with
+    timestamps.
+
+    Enter: exepath: the fixture parameter.
+           options: command line options to pass to the executable.
+           input: data to pass via stdin.
+           env: additional environment parameters.
+    Exit:  out: a list of (time, string) values from stdout.
+           err: a list of (time, string) values from stderr.
+    """
+    def readerthread(fh, buffer):
+        buffer.append([])
+        while True:
+            data = fh.readline()
+            if data is None or not len(data):
+                break
+            buffer[0].append((time.time(), data))
+        fh.close()
+
+    cmd = [exepath] + options
+    cmdenv = os.environ.copy()
+    cmdenv.update(env)
+    proc = subprocess.Popen(
+        cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, env=cmdenv)
+    proc._readerthread = readerthread
     out, err = proc.communicate(input)
     return out, err
 
@@ -36,6 +81,19 @@ def testVersion(exepath):
     assert 'psutil' in out and 'pywin32' in out
     out, err = runPyExe(exepath, ['-VV'])
     assert 'psutil' in out and 'pywin32' in out
+
+
+@pytest.mark.pyexe
+def testHelp(exepath):
+    for opt in ('--help', '-h', '-?', '/?'):
+        out, err = runPyExe(exepath, [opt])
+        assert 'Stand-alone specific options' in out
+
+
+@pytest.mark.pyexe
+def testAllFlag(exepath):
+    out, err = runPyExe(exepath, ['--all', '-c', 'import sys;print(sorted(sys.modules.keys()))'])
+    assert 'psutil' in out and 'multiprocessing' in out
 
 
 def testDirectCommand(exepath):
@@ -81,6 +139,9 @@ except Exception:
   pass
 """ % key)
         assert key in out.lower() or 'python.org' in out
+    out, err = runPyExe(exepath, ['-S'], input='print(quit)')
+    assert 'quit' not in out
+    assert 'is not defined' in err
 
 
 def testMultiprocessing(exepath):
@@ -117,13 +178,6 @@ result = sympy.simplify(1/x + (x*sympy.sin(x) - 1)/x)
 print(result)
 """)
     assert 'sin(x)' in out
-
-
-@pytest.mark.pyexe
-def testHelp(exepath):
-    for opt in ('--help', '-h', '-?', '/?'):
-        out, err = runPyExe(exepath, [opt])
-        assert 'Stand-alone specific options' in out
 
 
 def testFromStdin(exepath):
@@ -164,12 +218,6 @@ print(sys.argv)
     assert """['-', 'param1', "'param2'"]""" in out
 
 
-@pytest.mark.pyexe
-def testAllFlag(exepath):
-    out, err = runPyExe(exepath, ['--all', '-c', 'import sys;print(sorted(sys.modules.keys()))'])
-    assert 'psutil' in out and 'multiprocessing' in out
-
-
 def testZipApp(exepath):
     out, err = runPyExe(exepath, ['..\\sample_zipapp.pyz'])
     assert '15' in out
@@ -184,8 +232,32 @@ def testSkipHeader(exepath):
     assert 'no header' in out
 
 
-# Add tests for:
-#  command line options:
-#    -u / PYTHONUNBUFFERED
-#    -S
-#    -E
+def testUnbuffered(exepath):
+    delayed = """import time;print('Line 1');time.sleep(1);print('Line 2')"""
+    out, err = runPyExeLines(exepath, ['-c', delayed])
+    assert out[1][0] - out[0][0] < 0.5
+    out, err = runPyExeLines(exepath, ['-u', '-c', delayed])
+    assert out[1][0] - out[0][0] > 0.5
+    out, err = runPyExeLines(exepath, ['-c', delayed], env={'PYTHONUNBUFFERED': 'true'})
+    assert out[1][0] - out[0][0] > 0.5
+    out, err = runPyExeLines(exepath, ['-E', '-c', delayed], env={'PYTHONUNBUFFERED': 'true'})
+    assert out[1][0] - out[0][0] < 0.5
+
+
+def testPythonPath(exepath):
+    out, err = runPyExe(exepath, ['sample_print_path.py'],
+                        env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
+    assert '\'C:\\\\Temp\'' in out
+    out, err = runPyExe(exepath, ['-E', 'sample_print_path.py'],
+                        env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
+    assert '\'C:\\\\Temp\'' not in out
+
+
+def testIsolateFlag(exepath, pyversion):
+    if pyversion >= (3, ):
+        out, err = runPyExe(exepath, ['sample_print_path.py'],
+                            env={'PYTHONPATH': 'C:\\Temp'})
+        assert '\'\'' in out and '\'C:\\\\Temp\'' in out
+        out, err = runPyExe(exepath, ['-I', 'sample_print_path.py'],
+                            env={'PYTHONPATH': 'C:\\Temp'})
+        assert '\'\'' not in out and '\'C:\\\\Temp\'' not in out

@@ -20,3 +20,11 @@ py36-64.exe -m pip install --no-cache-dir --target . --upgrade sympy
 ```
 
 Use `-m pip` to run the pip module.  Use `--no-cache-dir` to avoid writing files to the user's data directory.  Use `--target .` to install to the current directory, allowing you to import the modules easily.  Use `--upgrade` to replace existing files, such as the common `bin` directory.  Note that using `--upgrade` will overwrite or discard existing files, which may not be what you want (the `bin` directory will end up with just files for the most recently installed package).
+
+## Differences from installed Python
+
+Although the stand-alone Python attempts to have the same features as a normally installed Python, there are some differences.
+
+- `PYTHONHOME` is ignored.  This option doesn't make sense for a stand-alone version.
+- Not all command line options and environment variables are implemented.  Specifically, all of the following are ignored: `-b`, `-B`, `-d`, `-O`, `-q`, `-V`, `-W`, `-X`, `--check-hash-based-pycs`, `PYTHONSTARTUP`, `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONHASHSEED`, `PYTHONFAULTHANDLER`.
+

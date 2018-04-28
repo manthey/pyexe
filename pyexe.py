@@ -60,6 +60,7 @@ Help = False
 NoSiteFlag = False
 Interactive = None
 InteractiveArgv = None
+Isolated = False
 PrintVersion = 0
 RunCommand = None
 RunFile = None
@@ -85,11 +86,17 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 Help = True
             elif let == 'i':
                 Interactive = True
+            elif let == 'I' and sys.version_info > (3, ):
+                UseEnvironment = False
+                Isolated = True
             elif let == 'm' and i+1 < len(sys.argv):
                 RunModule = sys.argv[i+1+skip]
                 RunModuleArgv = sys.argv[i+1+skip:]
                 skip = len(sys.argv)
-                break
+            elif let == 's':
+                # We don't have to do anything for this flag, since we never
+                # have a local user site-packages directory in stand-alone mode
+                pass
             elif let == 'S':
                 NoSiteFlag = True
             elif let == 'u':
@@ -98,13 +105,12 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 PrintVersion += 1
             elif let == 'x':
                 SkipFirstLine = True
-            elif let in ('b', 'B', 'd', 'I', 'O', 'q', 's', 'v'):
+            elif let in ('b', 'B', 'd', 'O', 'q', 'v'):
                 # ignore these options
                 pass
             elif let in ('W', 'X'):
                 # ignore these options
                 skip += 1
-                pass
             else:
                 Help = True
     elif arg == '--check-hash-based-pycs':
@@ -129,21 +135,31 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
 if Help:
     print_version(0)
     print('usage: %s [option] ... [-c cmd | -m mod | file | -] [arg] ...' % sys.argv[0])
-    print("""Stand-alone specific options:
---all  : imports all bundled modules.
-General Python options and arguments (and corresponding environment variables):
+    print("""Options and arguments (and corresponding environment variables):
 -c cmd : program passed in as string (terminates option list)
--E     : ignore PYTHON* environment variables
+-E     : ignore PYTHON* environment variables (such as PYTHONPATH)
 -h     : print this help message and exit (also --help, /?)
 -i     : inspect interactively after running script; forces a prompt even
-         if stdin does not appear to be a terminal; also PYTHONINSPECT=x
--m mod : run library module as a script (terminates option list)
+         if stdin does not appear to be a terminal; also PYTHONINSPECT=x""")
+    if sys.version_info > (3, ):
+        print("""-I     : isolate Python from the user's environment (implies -E and -s)""")
+    print("""-m mod : run library module as a script (terminates option list)
+-s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
 -S     : don't imply 'import site' on initialization
 -u     : unbuffered binary stdout and stderr; also PYTHONUNBUFFERED=x
          see man page for details on internal buffering relating to '-u'
 -V     : print the Python version number and exit (also --version).  Use twice
          for more complete information.
--x     : skip first line of source, allowing use of non-Unix forms of #!cmd""")
+-x     : skip first line of source, allowing use of non-Unix forms of #!cmd
+file   : program read from script file
+-      : program read from stdin (default; interactive mode if a tty)
+arg ...: arguments passed to program in sys.argv[1:]
+Stand-alone specific options:
+--all  : imports all bundled modules.
+
+Other environment variables:
+PYTHONPATH   : ';'-separated list of directories prefixed to the
+               default module search path.  The result is sys.path.""")
     sys.exit(0)
 if PrintVersion:
     print_version(PrintVersion)
@@ -153,6 +169,8 @@ if UseEnvironment:
         Interactive = 'check'
     if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
         Unbuffered = True
+    if os.environ.get('PYTHONPATH'):
+        sys.path[0:0] = os.environ.get('PYTHONPATH').split(os.pathsep)
 bufsize = 1 if sys.version_info >= (3, ) else 0
 if Unbuffered:
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
@@ -180,7 +198,8 @@ if RunFile:
         with zipfile.ZipFile(RunFile) as zptr:
             src = zptr.open('__main__.py').read()
     else:
-        sys.path[0:0] = [os.path.split(RunFile)[0]]
+        if not Isolated:
+            sys.path[0:0] = [os.path.split(RunFile)[0]]
         with open(RunFile) as fptr:
             if SkipFirstLine:
                 discard = fptr.readline()
@@ -193,13 +212,15 @@ elif RunModule:
     sys.argv[:] = RunModuleArgv
     runpy.run_module(RunModule, run_name='__main__')
 elif RunCommand is not None:
-    sys.path[0:0] = ['']
+    if not Isolated:
+        sys.path[0:0] = ['']
     sys.argv[:] = RunCommandArgv
     six.exec_(RunCommand, globenv)
 elif Interactive is None:
     Interactive = 'check'
 if Interactive:
-    sys.path[0:0] = ['']
+    if not Isolated:
+        sys.path[0:0] = ['']
     if InteractiveArgv:
         sys.argv[:] = InteractiveArgv
     if Interactive is True or sys.stdin.isatty():
