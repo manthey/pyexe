@@ -40,7 +40,7 @@ build_script:
   - python modules_pyexe.py pyexe.py
   # Save the artifact immediately
   - appveyor PushArtifact pyexe.py
-  - python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py
+  - "python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --icon %PYTHON%\\pythonw.exe"
   - cp dist\pyexe.exe %OUTPUT%
   # Save the artifact immediately
   - appveyor PushArtifact %OUTPUT%

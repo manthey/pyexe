@@ -54,6 +54,21 @@ def print_version(details=1):
             print('%s: %s' % (module_name, module.__version__))
 
 
+def skip_once(cls, method):
+    """
+    The first time a mthod of a class is called, skip doing the action.
+
+    Enter: cls: the class instance with the method.
+           method: the name of the method (a string).
+    """
+    orig = getattr(cls, method, None)
+
+    def skip(*args, **kwargs):
+        setattr(cls, method, orig)
+
+    setattr(cls, method, skip)
+
+
 if hasattr(sys, 'frozen'):
     delattr(sys, 'frozen')
 Help = False
@@ -62,10 +77,12 @@ Interactive = None
 InteractiveArgv = None
 Isolated = False
 PrintVersion = 0
+QuietFlag = False
 RunCommand = None
 RunFile = None
 RunModule = None
 SkipFirstLine = False
+StartupFile = None
 Unbuffered = False
 UseEnvironment = True
 skip = 0
@@ -93,6 +110,8 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 RunModule = sys.argv[i+1+skip]
                 RunModuleArgv = sys.argv[i+1+skip:]
                 skip = len(sys.argv)
+            elif let == 'q' and sys.version_info > (3, ):
+                QuietFlag = True
             elif let == 's':
                 # We don't have to do anything for this flag, since we never
                 # have a local user site-packages directory in stand-alone mode
@@ -143,8 +162,10 @@ if Help:
          if stdin does not appear to be a terminal; also PYTHONINSPECT=x""")
     if sys.version_info > (3, ):
         print("""-I     : isolate Python from the user's environment (implies -E and -s)""")
-    print("""-m mod : run library module as a script (terminates option list)
--s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
+    print("""-m mod : run library module as a script (terminates option list)""")
+    if sys.version_info > (3, ):
+        print("""-q     : don't print version and copyright messages on interactive startup""")
+    print("""-s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
 -S     : don't imply 'import site' on initialization
 -u     : unbuffered binary stdout and stderr; also PYTHONUNBUFFERED=x
          see man page for details on internal buffering relating to '-u'
@@ -158,6 +179,7 @@ Stand-alone specific options:
 --all  : imports all bundled modules.
 
 Other environment variables:
+PYTHONSTARTUP: file executed on interactive startup (no default)
 PYTHONPATH   : ';'-separated list of directories prefixed to the
                default module search path.  The result is sys.path.""")
     sys.exit(0)
@@ -167,10 +189,11 @@ if PrintVersion:
 if UseEnvironment:
     if Interactive is not True and os.environ.get('PYTHONINSPECT'):
         Interactive = 'check'
-    if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
-        Unbuffered = True
     if os.environ.get('PYTHONPATH'):
         sys.path[0:0] = os.environ.get('PYTHONPATH').split(os.pathsep)
+    StartupFile = os.environ.get('PYTHONSTARTUP')
+    if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
+        Unbuffered = True
 bufsize = 1 if sys.version_info >= (3, ) else 0
 if Unbuffered:
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
@@ -224,6 +247,9 @@ if Interactive:
     if InteractiveArgv:
         sys.argv[:] = InteractiveArgv
     if Interactive is True or sys.stdin.isatty():
+        if not RunFile and not RunModule and not RunCommand and StartupFile:
+            import runpy
+            runpy.run_path(StartupFile, run_name='__main__')
         import code
         cons = code.InteractiveConsole(locals=globenv)
         if not sys.stdout.isatty():
@@ -234,8 +260,10 @@ if Interactive:
         banner = 'Python %s' % sys.version
         if not NoSiteFlag:
             banner += '\nType "help", "copyright", "credits" or "license" for more information.'
-        if RunModule or RunCommand:
+        if RunModule or RunCommand or QuietFlag:
             banner = ''
+            if sys.version_info < (3, ):
+                skip_once(cons, 'write')
         kwargs = {}
         if sys.version_info >= (3, 6):
             kwargs['exitmsg'] = ''

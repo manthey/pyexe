@@ -201,11 +201,13 @@ print(sum([add(x, x + 1) for x in range(10)]))
     assert 'SyntaxError: invalid syntax' in err
     out, err = runPyExe(exepath, ['-i'], input=blanks)
     assert '100' in out
+    assert not err.startswith('>>>')
     # Running a command first shouldn't affect the input processing.
     out, err = runPyExe(exepath, ['-i', '-c', 'import sys'], input=noblanks)
     assert 'SyntaxError: invalid syntax' in err
     out, err = runPyExe(exepath, ['-i', '-c', 'import sys'], input=blanks)
     assert '100' in out
+    assert err.startswith('>>>')
     # Using an environment variable should check for a tty
     out, err = runPyExe(exepath, input=noblanks, env={'PYTHONINSPECT': 'true'})
     assert '100' in out
@@ -261,3 +263,22 @@ def testIsolateFlag(exepath, pyversion):
         out, err = runPyExe(exepath, ['-I', 'sample_print_path.py'],
                             env={'PYTHONPATH': 'C:\\Temp'})
         assert '\'\'' not in out and '\'C:\\\\Temp\'' not in out
+
+
+def testQuietFlag(exepath, pyversion):
+    if pyversion >= (3, ):
+        out, err = runPyExe(exepath, ['-i'], input='print("here")')
+        assert not err.startswith('>>>')
+        out, err = runPyExe(exepath, ['-q', '-i'], input='print("here")')
+        assert err.startswith('>>>')
+
+
+def testStartup(exepath, pyversion):
+    out, err = runPyExe(exepath, ['-i'], input='print("here")')
+    assert '>>>' in err and '-->' not in err
+    out, err = runPyExe(exepath, ['-i'], input='print("here")',
+                        env={'PYTHONSTARTUP': 'sample_startup.py'})
+    assert '>>>' not in err and '-->' in err
+    out, err = runPyExe(exepath, ['-i', '-E'], input='print("here")',
+                        env={'PYTHONSTARTUP': 'sample_startup.py'})
+    assert '>>>' in err and '-->' not in err

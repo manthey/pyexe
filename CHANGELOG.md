@@ -7,6 +7,8 @@
 - Added support for zipapps.
 - Added support for `PYTHONPATH`.
 - Added support for `-I` in Python 3.x variants.
+- Added support for `-q` in Python 3.x variants.
+- Set program icon.
 
 ## Version 12
 
