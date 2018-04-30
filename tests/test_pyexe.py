@@ -319,3 +319,49 @@ def testByteCodeFlag(exepath):
     out, err = runPyExe(exepath, ['-E', '-i'], input='import sample_print_path.py',
                         env={'PYTHONDONTWRITEBYTECODE': 'true'})
     assert clearPyc('sample_print_path.py') == 1
+
+
+def testOptimizeFlag(exepath):
+    clearPyc('sample_optimize.py')
+    out, err = runPyExe(exepath, [
+        '-c', 'import sample_optimize;'
+        'print(sample_optimize.test_optimize());'
+        'print(sample_optimize.test_optimize.__doc__)'])
+    assert 'AssertionError' in err
+    clearPyc('sample_optimize.py')
+    out, err = runPyExe(exepath, [
+        '-O', '-c', 'import sample_optimize;'
+        'print(sample_optimize.test_optimize());'
+        'print(sample_optimize.test_optimize.__doc__)'])
+    assert 'True' in out and 'AssertionError' not in err
+    assert 'This function' in out
+    clearPyc('sample_optimize.py')
+    out, err = runPyExe(exepath, [
+        '-O', '-O', '-c', 'import sample_optimize;'
+        'print(sample_optimize.test_optimize());'
+        'print(sample_optimize.test_optimize.__doc__)'])
+    assert 'True' in out and 'AssertionError' not in err
+    assert 'This function' not in out
+    clearPyc('sample_optimize.py')
+    out, err = runPyExe(exepath, [
+        '-c', 'import sample_optimize;'
+        'print(sample_optimize.test_optimize());'
+        'print(sample_optimize.test_optimize.__doc__)'],
+        env={'PYTHONOPTIMIZE': '2'})
+    assert 'True' in out and 'AssertionError' not in err
+    assert 'This function' not in out
+    clearPyc('sample_optimize.py')
+    out, err = runPyExe(exepath, [
+        '-c', 'import sample_optimize;'
+        'print(sample_optimize.test_optimize());'
+        'print(sample_optimize.test_optimize.__doc__)'],
+        env={'PYTHONOPTIMIZE': '-1'})
+    assert 'True' in out and 'AssertionError' not in err
+    assert 'This function' in out
+    clearPyc('sample_optimize.py')
+    out, err = runPyExe(exepath, [
+        '-E', '-c', 'import sample_optimize;'
+        'print(sample_optimize.test_optimize());'
+        'print(sample_optimize.test_optimize.__doc__)'],
+        env={'PYTHONOPTIMIZE': '2'})
+    assert 'AssertionError' in err
