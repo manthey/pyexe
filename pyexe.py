@@ -144,6 +144,7 @@ SkipFirstLine = False
 StartupFile = None
 Unbuffered = False
 UseEnvironment = True
+VerboseFlag = 0
 skip = 0
 sys.dont_write_bytecode = False
 for i in six.moves.range(1, len(sys.argv)):  # noqa
@@ -159,6 +160,10 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 RunCommand = sys.argv[i+1+skip]
                 RunCommandArgv = ['-c'] + sys.argv[i+2+skip:]
                 skip = len(sys.argv)
+            elif let == 'd':
+                # We don't have to do anything for this flag, since we never
+                # bundle with a debug build of Python
+                pass
             elif let == 'E':
                 UseEnvironment = False
             elif let == 'h':
@@ -184,14 +189,13 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 NoSiteFlag = True
             elif let == 'u':
                 Unbuffered = True
-            # elif let == 'v':
-            #     import ctypes
-            #     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value += 1
+            elif let == 'v':
+                VerboseFlag += 1
             elif let == 'V':
                 PrintVersion += 1
             elif let == 'x':
                 SkipFirstLine = True
-            elif let in ('b', 'd', 't', 'v', '3'):
+            elif let in ('b', 't', '3'):
                 # ignore these options
                 pass
             elif let in ('Q', 'W', 'X'):
@@ -240,8 +244,11 @@ if Help:
         print("""-q     : don't print version and copyright messages on interactive startup""")
     print("""-s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
 -S     : don't imply 'import site' on initialization
--u     : unbuffered binary stdout and stderr; also PYTHONUNBUFFERED=x
+-u     : unbuffered binary stdout and stderr, stdin always buffered;
+         also PYTHONUNBUFFERED=x
          see man page for details on internal buffering relating to '-u'
+-v     : verbose (trace import statements); also PYTHONVERBOSE=x
+         can be supplied multiple times to increase verbosity
 -V     : print the Python version number and exit (also --version).  Use twice
          for more complete information.
 -x     : skip first line of source, allowing use of non-Unix forms of #!cmd
@@ -270,6 +277,10 @@ if UseEnvironment:
     StartupFile = os.environ.get('PYTHONSTARTUP')
     if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
         Unbuffered = True
+    VerboseFlag = get_env_flag(VerboseFlag, 'PYTHONVERBOSE')
+if VerboseFlag:
+    import ctypes
+    ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value = VerboseFlag
 if Optimize:
     import ctypes
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_OptimizeFlag').value = Optimize

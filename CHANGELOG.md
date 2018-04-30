@@ -8,7 +8,11 @@
 - Added support for `PYTHONPATH`.
 - Added support for `-I` in Python 3.x variants.
 - Added support for `-q` in Python 3.x variants.
+- Added support for `-B`.
+- Added support for `-O`.
+- Added support for `-v`.
 - Set program icon.
+- When running a Python program, the globals are closer to native Python.
 
 ## Version 12
 

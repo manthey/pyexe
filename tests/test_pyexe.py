@@ -365,3 +365,21 @@ def testOptimizeFlag(exepath):
         'print(sample_optimize.test_optimize.__doc__)'],
         env={'PYTHONOPTIMIZE': '2'})
     assert 'AssertionError' in err
+
+
+def testVerboseFlag(exepath):
+    out, err = runPyExe(exepath, ['-c', 'import bisect'])
+    assert 'bisect' not in err and '# cleanup' not in err
+    out, err = runPyExe(exepath, ['-v', '-c', 'import bisect'])
+    assert 'bisect' in err and '# cleanup' in err
+    assert 'clear[2]' not in err
+    out, err = runPyExe(exepath, ['-v', '-v', '-c', 'import bisect'])
+    assert 'bisect' in err and '# cleanup' in err
+    assert 'clear[2]' in err
+    out, err = runPyExe(exepath, ['-c', 'import bisect'],
+                        env={'PYTHONVERBOSE': '2'})
+    assert 'bisect' in err and '# cleanup' in err
+    assert 'clear[2]' in err
+    out, err = runPyExe(exepath, ['-E', '-c', 'import bisect'],
+                        env={'PYTHONVERBOSE': '2'})
+    assert 'bisect' not in err and '# cleanup' not in err

@@ -26,5 +26,6 @@ Use `-m pip` to run the pip module.  Use `--no-cache-dir` to avoid writing files
 Although the stand-alone Python attempts to have the same features as a normally installed Python, there are some differences.
 
 - `PYTHONHOME` is ignored.  This option doesn't make sense for a stand-alone version.
-- Not all command line options and environment variables are implemented.  Specifically, all of the following are ignored: `-b`, `-d`, `-Q`, `-t`, `-V`, `-W`, `-X`, `-3`, `--check-hash-based-pycs`, `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONHASHSEED`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`.
+- `-V` and `PYTHONVERBOSE` don't print exactly the same information as native Python, partly because the verbosity is increased after some modules are already imported.
+- Not all command line options and environment variables are implemented.  Specifically, the following are ignored: `-b`, `-Q`, `-t`, `-W`, `-X`, `-3`, `--check-hash-based-pycs`, `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONHASHSEED`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`, `PYTHONMALLOC`, `PYTHONCOERCECLOCALE`, `PYTHONDEVMODE`.  Many of these could be handled with a small amount of work.
 
