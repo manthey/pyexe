@@ -70,6 +70,24 @@ def runPyExeLines(exepath, options=[], input=None, env={}):
     return out, err
 
 
+def clearPyc(basename):
+    """
+    Clear local pyc/pyo files based on a python filename.
+
+    Enter: basename: the name of the python file including the .py extension.
+    Exit:  count: the number of files removed.
+    """
+    count = 0
+    for root in ('.', '__pycache__'):
+        if os.path.exists(root):
+            for filename in os.listdir(root):
+                if (filename.startswith(os.path.splitext(basename)[0] + '.') and
+                        (filename.endswith('.pyc') or filename.endswith('.pyo'))):
+                    os.unlink(os.path.join(root, filename))
+                    count += 1
+    return count
+
+
 @pytest.mark.pyexe
 def testVersion(exepath):
     out, err = runPyExe(exepath, ['--version'])
@@ -287,3 +305,17 @@ def testStartup(exepath, pyversion):
 def testRunFileGlobals(exepath):
     out, err = runPyExe(exepath, ['sample_print_globals.py'])
     assert 'sys' not in out and 'RunFile' not in out
+
+
+def testByteCodeFlag(exepath):
+    clearPyc('sample_print_path.py')
+    out, err = runPyExe(exepath, ['-i'], input='import sample_print_path.py')
+    assert clearPyc('sample_print_path.py') == 1
+    out, err = runPyExe(exepath, ['-B', '-i'], input='import sample_print_path.py')
+    assert clearPyc('sample_print_path.py') == 0
+    out, err = runPyExe(exepath, ['-i'], input='import sample_print_path.py',
+                        env={'PYTHONDONTWRITEBYTECODE': 'true'})
+    assert clearPyc('sample_print_path.py') == 0
+    out, err = runPyExe(exepath, ['-E', '-i'], input='import sample_print_path.py',
+                        env={'PYTHONDONTWRITEBYTECODE': 'true'})
+    assert clearPyc('sample_print_path.py') == 1

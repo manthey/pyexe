@@ -2,7 +2,7 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/n18f0997k18x87lw/branch/master?svg=true)](https://ci.appveyor.com/project/manthey/pyexe/branch/master)
 
-I have often wanted a stand-alone version of python that is a single Windows executable.
+Here is a stand-alone version of python that is a single Windows executable.
 
 It consists of the most recent versions of Python (with builds for 2.7, 3.5,
 and 3.6 each in 32-bit and 64-bit versions), pywin32, psutil, six, pip, 
@@ -26,5 +26,5 @@ Use `-m pip` to run the pip module.  Use `--no-cache-dir` to avoid writing files
 Although the stand-alone Python attempts to have the same features as a normally installed Python, there are some differences.
 
 - `PYTHONHOME` is ignored.  This option doesn't make sense for a stand-alone version.
-- Not all command line options and environment variables are implemented.  Specifically, all of the following are ignored: `-b`, `-B`, `-d`, `-O`, `-q`, `-V`, `-W`, `-X`, `--check-hash-based-pycs`, `PYTHONSTARTUP`, `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONHASHSEED`, `PYTHONFAULTHANDLER`.
+- Not all command line options and environment variables are implemented.  Specifically, all of the following are ignored: `-b`, `-d`, `-O`, `-Q`, `-t`, `-V`, `-W`, `-X`, `-3`, `--check-hash-based-pycs`, `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONHASHSEED`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`.
 

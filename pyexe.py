@@ -127,6 +127,7 @@ StartupFile = None
 Unbuffered = False
 UseEnvironment = True
 skip = 0
+sys.dont_write_bytecode = False
 for i in six.moves.range(1, len(sys.argv)):  # noqa
     if skip:
         skip -= 1
@@ -134,7 +135,9 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
     arg = sys.argv[i]
     if arg.startswith('-') and len(arg) > 1 and arg[1:2] != '-':
         for let in arg[1:]:
-            if let == 'c':
+            if let == 'B':
+                sys.dont_write_bytecode = True
+            elif let == 'c':
                 RunCommand = sys.argv[i+1+skip]
                 RunCommandArgv = ['-c'] + sys.argv[i+2+skip:]
                 skip = len(sys.argv)
@@ -151,6 +154,9 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 RunModule = sys.argv[i+1+skip]
                 RunModuleArgv = sys.argv[i+1+skip:]
                 skip = len(sys.argv)
+            # elif let == 'O':
+            #     import ctypes
+            #     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_OptimizeFlag').value += 1
             elif let == 'q' and sys.version_info > (3, ):
                 QuietFlag = True
             elif let == 's':
@@ -161,16 +167,22 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 NoSiteFlag = True
             elif let == 'u':
                 Unbuffered = True
+            # elif let == 'v':
+            #     import ctypes
+            #     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value += 1
             elif let == 'V':
                 PrintVersion += 1
             elif let == 'x':
                 SkipFirstLine = True
-            elif let in ('b', 'B', 'd', 'O', 'q', 'v'):
+            elif let in ('b', 'd', 'O', 't', 'v', '3'):
                 # ignore these options
                 pass
-            elif let in ('W', 'X'):
+            elif let in ('Q', 'W', 'X'):
                 # ignore these options
-                skip += 1
+                if arg.startswith('-' + let) and len(arg) > 2:
+                    break
+                else:
+                    skip += 1
             else:
                 Help = True
     elif arg == '--check-hash-based-pycs':
@@ -196,6 +208,7 @@ if Help:
     print_version(0)
     print('usage: %s [option] ... [-c cmd | -m mod | file | -] [arg] ...' % sys.argv[0])
     print("""Options and arguments (and corresponding environment variables):
+-B     : don't write .py[co] files on import; also PYTHONDONTWRITEBYTECODE=x
 -c cmd : program passed in as string (terminates option list)
 -E     : ignore PYTHON* environment variables (such as PYTHONPATH)
 -h     : print this help message and exit (also --help, /?)
@@ -228,6 +241,8 @@ if PrintVersion:
     print_version(PrintVersion)
     sys.exit(0)
 if UseEnvironment:
+    if os.environ.get('PYTHONDONTWRITEBYTECODE'):
+        sys.dont_write_bytecode = True
     if Interactive is not True and os.environ.get('PYTHONINSPECT'):
         Interactive = 'check'
     if os.environ.get('PYTHONPATH'):
