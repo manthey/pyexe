@@ -282,3 +282,8 @@ def testStartup(exepath, pyversion):
     out, err = runPyExe(exepath, ['-i', '-E'], input='print("here")',
                         env={'PYTHONSTARTUP': 'sample_startup.py'})
     assert '>>>' in err and '-->' not in err
+
+
+def testRunFileGlobals(exepath):
+    out, err = runPyExe(exepath, ['sample_print_globals.py'])
+    assert 'sys' not in out and 'RunFile' not in out

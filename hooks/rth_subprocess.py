@@ -1,6 +1,4 @@
 import contextlib
-import os
-import six
 import subprocess
 import sys
 
@@ -29,6 +27,10 @@ class _pyexePopen(subprocess.Popen):
 
     @contextlib.contextmanager
     def _prepare_env(self, args, executable, env):
+        import os
+        import six
+        import sys
+
         inparam = False
         inenv = False
         origname = None

@@ -54,6 +54,47 @@ def print_version(details=1):
             print('%s: %s' % (module_name, module.__version__))
 
 
+def run_file(runFile, runFileArgv, skipFirstLine, globenv):
+    """
+    Exec a file with a limited set of globals.  We can't use runpy.run_path for
+    (a) skipped first line, (b) Python 2.7 and zipapps (pyz files).  Rather
+    than use run_path in the limited cases where it can be used, we use one
+    code path for executing files in general.
+
+    Enter: runFile: path of the file to exec.
+           runFileArgv: arguments to set sys.argv to.
+           SkipFileLine: True to skip the first line of the file.
+           globenv: global environment to use.
+    """
+    import zipfile
+    sys.argv[:] = runFileArgv
+    if zipfile.is_zipfile(runFile):
+        sys.path[0:0] = [runFile]
+        with zipfile.ZipFile(runFile) as zptr:
+            src = zptr.open('__main__.py').read()
+    else:
+        if not Isolated:
+            sys.path[0:0] = [os.path.split(runFile)[0]]
+        with open(runFile) as fptr:
+            if skipFirstLine:
+                fptr.readline()
+            src = fptr.read()
+    # If we use anything other than the actual globals() dictionary,
+    # multiprocessing doesn't work.  Therefore, mutate globals() and restore it
+    # when done.
+    # We need to hang on to a reference to six.exec_
+    exec_ = six.exec_
+    globs = globals()
+    originalGlobals = globs.copy()
+    globs.clear()
+    globs.update(globenv)
+    globs['__name__'] = '__main__'
+    globs['__file__'] = runFile
+    exec_(src, globs)
+    globs.clear()
+    globs.update(originalGlobals)
+
+
 def skip_once(cls, method):
     """
     The first time a mthod of a class is called, skip doing the action.
@@ -205,31 +246,10 @@ if not NoSiteFlag:
 # Generate the globals/locals environment
 globenv = {}
 for key in list(globals().keys()):
-    if key.startswith('_'):
+    if key.startswith('_') and key != '_frozen_name':
         globenv[key] = globals()[key]
 if RunFile:
-    # We can't use runpy.run_path for (a) skipped first line, (b) Python 2.7
-    # and zipapps (pyz files).  Rather than use run_path in the limited cases
-    # where it can be used, we use one code path for executing files in
-    # general.
-    import zipfile
-    sys.argv[:] = RunFileArgv
-    __name__ = '__main__'
-    __file__ = RunFile
-    if zipfile.is_zipfile(RunFile):
-        sys.path[0:0] = [RunFile]
-        with zipfile.ZipFile(RunFile) as zptr:
-            src = zptr.open('__main__.py').read()
-    else:
-        if not Isolated:
-            sys.path[0:0] = [os.path.split(RunFile)[0]]
-        with open(RunFile) as fptr:
-            if SkipFirstLine:
-                discard = fptr.readline()
-            src = fptr.read()
-    # If we use anything other than the actual globals() dictionary,
-    # multiprocessing doesn't work.
-    six.exec_(src)
+    run_file(RunFile, RunFileArgv, SkipFirstLine, globenv)
 elif RunModule:
     import runpy
     sys.argv[:] = RunModuleArgv
