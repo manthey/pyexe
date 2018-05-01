@@ -12,7 +12,8 @@ def exepath(request):
 @pytest.fixture
 def pyversion(exepath):
     out, err = runPyExe(exepath, ['--version'])
-    return (int(part) for part in (out + err).split()[1].split('.'))
+    version = (out + err).strip().split()[-1]
+    return tuple(int(part) for part in version.split('.'))
 
 
 def runPyExe(exepath, options=[], input=None, env={}):
@@ -383,3 +384,54 @@ def testVerboseFlag(exepath):
     out, err = runPyExe(exepath, ['-E', '-c', 'import bisect'],
                         env={'PYTHONVERBOSE': '2'})
     assert 'bisect' not in err and '# cleanup' not in err
+
+
+def testBytesWarningFlag(exepath, pyversion):
+    if pyversion >= (3, ):
+        out, err = runPyExe(exepath, ['-c', 'print(str(b"abc"))'])
+        assert 'abc' in out
+        assert 'BytesWarning' not in err
+        out, err = runPyExe(exepath, ['-b', '-c', 'print(str(b"abc"))'])
+        assert 'abc' in out
+        assert 'BytesWarning' in err
+        out, err = runPyExe(exepath, ['-b', '-b', '-c', 'print(str(b"abc"))'])
+        assert 'abc' not in out
+        assert 'BytesWarning' in err
+
+
+def testDivisionFlag(exepath, pyversion):
+    if pyversion < (3, ):
+        out, err = runPyExe(exepath, ['-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2, 1.75]' in out
+        assert 'division' not in err
+        out, err = runPyExe(exepath, ['-Qold', '-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2, 1.75]' in out
+        assert 'division' not in err
+        out, err = runPyExe(exepath, ['-Qwarn', '-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2, 1.75]' in out
+        assert 'classic int division' in err
+        assert 'classic float division' not in err
+        out, err = runPyExe(exepath, ['-Qwarnall', '-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2, 1.75]' in out
+        assert 'classic int division' in err
+        assert 'classic float division' in err
+        out, err = runPyExe(exepath, ['-Qnew', '-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2.75, 1.75]' in out
+        assert 'division' not in err
+
+
+def testTabcheckFlag(exepath, pyversion):
+    withtabs = """def add(a, b, c):
+        sum = a + b
+\treturn sum + c
+print(add(1, 2, 3))"""
+    if pyversion < (3, ):
+        out, err = runPyExe(exepath, input=withtabs)
+        assert '6' in out
+        assert 'inconsistent use of tabs' not in err
+        out, err = runPyExe(exepath, ['-t'], input=withtabs)
+        assert '6' in out
+        assert 'inconsistent use of tabs' in err and 'TabError' not in err
+        out, err = runPyExe(exepath, ['-t', '-t'], input=withtabs)
+        assert '6' not in out
+        assert 'inconsistent use of tabs' in err and 'TabError' in err

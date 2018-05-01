@@ -46,6 +46,8 @@ build_script:
   - appveyor PushArtifact %OUTPUT%
 
 test_script:
+  # Report version
+  - "%OUTPUT% -VV"
   # Sometimes we send test data to this directory
   - mkdir c:\temp
   - SET PATH=%ORIGPATH%
