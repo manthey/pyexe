@@ -25,7 +25,10 @@ Use `-m pip` to run the pip module.  Use `--no-cache-dir` to avoid writing files
 
 Although the stand-alone Python attempts to have the same features as a normally installed Python, there are some differences.
 
+- If command lie options are specified, there may be some differences in `sys.flags`, since it is read-only and cannot be altered after start.
 - `PYTHONHOME` is ignored.  This option doesn't make sense for a stand-alone version.
 - `-V` and `PYTHONVERBOSE` don't print exactly the same information as native Python, partly because the verbosity is increased after some modules are already imported.
-- Not all command line options and environment variables are implemented.  Specifically, the following are ignored: `-R`, `--check-hash-based-pycs`, `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONHASHSEED`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`, `PYTHONMALLOC`, `PYTHONCOERCECLOCALE`, `PYTHONDEVMODE`.  Many of these could be handled with a small amount of work.
+- `--check-hash-based-pycs` is ignored.  This option cannot be changed after the Python executable starts.
+- `-R` and `PYTHONHASHSEED` are ignored.  These options cannot be changed after the Python executable starts.
+- Not all command line options and environment variables are implemented.  Specifically, the following are ignored: `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`, `PYTHONMALLOC`, `PYTHONCOERCECLOCALE`, `PYTHONDEVMODE`.  Many of these could be handled with a small amount of work.
 

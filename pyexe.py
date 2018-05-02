@@ -204,6 +204,9 @@ Try `%s -h' for more information.
                     sys.exit(2)
                 if arg.startswith('-' + let) and len(arg) > 2:
                     break
+            elif let == 'R':
+                # We can't change the hash seed after start, so ignore it.
+                pass
             elif let == 's':
                 # We don't have to do anything for this flag, since we never
                 # have a local user site-packages directory in stand-alone mode
@@ -237,14 +240,13 @@ Try `%s -h' for more information.
             elif let == '3' and sys.version_info < (3, ):
                 Warning3k += 1
                 TabcheckFlag = max(TabcheckFlag, 1)
-            elif let in ('R', ):
-                # ignore these options
-                pass
             else:
                 Help = True
-    elif arg == '--check-hash-based-pycs':
-        # ignore this option
-        skip += 1
+    elif ((arg == '--check-hash-based-pycs' or arg.startswith('--check-hash-based-pycs=')) and
+          sys.version_info >= (3, 6)):
+        # There is no exposure to this option in Python's DLL, so can't do it
+        if '=' not in arg:
+            skip += 1
     elif arg == '--all':
         pass
     elif arg == '--help' or arg == '/?':
