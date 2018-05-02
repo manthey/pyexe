@@ -435,3 +435,16 @@ print(add(1, 2, 3))"""
         out, err = runPyExe(exepath, ['-t', '-t'], input=withtabs)
         assert '6' not in out
         assert 'inconsistent use of tabs' in err and 'TabError' in err
+
+
+def testPy3Flag(exepath, pyversion):
+    oldclassexc = """class old:
+  pass
+raise old()
+"""
+
+    if pyversion < (3, ):
+        out, err = runPyExe(exepath, input=oldclassexc)
+        assert '__main__.old:' in err and 'BaseException' not in err
+        out, err = runPyExe(exepath, ['-3'], input=oldclassexc)
+        assert '__main__.old:' in err and 'BaseException' in err

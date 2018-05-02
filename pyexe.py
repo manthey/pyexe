@@ -148,6 +148,7 @@ TabcheckFlag = 0
 Unbuffered = False
 UseEnvironment = True
 VerboseFlag = 0
+Warning3k = 0
 WarningBytes = 0
 WarningDivision = None
 skip = 0
@@ -218,7 +219,10 @@ Try `%s -h' for more information.
                 PrintVersion += 1
             elif let == 'x':
                 SkipFirstLine = True
-            elif let in ('R', '3'):
+            elif let == '3' and sys.version_info < (3, ):
+                Warning3k += 1
+                TabcheckFlag = max(TabcheckFlag, 1)
+            elif let in ('R', ):
                 # ignore these options
                 pass
             elif let in ('W', 'X'):
@@ -312,6 +316,8 @@ if VerboseFlag:
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value = VerboseFlag
 if TabcheckFlag:
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_TabcheckFlag').value = TabcheckFlag
+if Warning3k:
+    ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_Py3kWarningFlag').value = Warning3k
 if Optimize:
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_OptimizeFlag').value = Optimize
 if WarningBytes:
@@ -322,11 +328,13 @@ if WarningBytes:
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_BytesWarningFlag').value = WarningBytes
 if WarningDivision == 'new':
     ctypes.c_int.in_dll(ctypes.pythonapi, '_Py_QnewFlag').value = 1
-elif WarningDivision in ('warn', 'warnall'):
+elif WarningDivision in ('warn', 'warnall') or Warning3k:
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_DivisionWarningFlag').value = (
-        1 if WarningDivision == 'warn' else 2)
+        2 if WarningDivision == 'warnall' else 1)
     warnings.filterwarnings('default', category=DeprecationWarning,
                             message='classic [a-z]+ division')
+if Warning3k:
+    warnings.filterwarnings('default', category=DeprecationWarning)
 bufsize = 1 if sys.version_info >= (3, ) else 0
 if Unbuffered:
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
