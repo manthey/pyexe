@@ -3,9 +3,6 @@
 # need PyInstaller's version of _Popen to use the same environment in the
 # forked processes as the main process.
 
-import os
-import sys
-
 
 # Module multiprocessing is organized differently in Python 3.4+
 try:
@@ -20,6 +17,9 @@ except ImportError:
 
 class _Popen(forking.Popen):
     def __init__(self, *args, **kw):
+        import os
+        import sys
+
         oldValue = os.getenv('_MEIPASS2')
         os.putenv('_MEIPASS2', sys._MEIPASS)
         try:

@@ -21,7 +21,7 @@ init:
   - python -m pip install --upgrade setuptools
   - python -m pip install pywin32 psutil six setuptools
   - python -m pip install pyinstaller
-  # Remvoe the site module hook from PyInstaller; we need the site module as is
+  # Remove the site module hook from PyInstaller; we need the site module as is
   - "del /q %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\hook-site.*"
   - "del /q /s %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\__pycache__"
   - mkdir c:\u
@@ -40,7 +40,7 @@ build_script:
   - python modules_pyexe.py pyexe.py
   # Save the artifact immediately
   - appveyor PushArtifact pyexe.py
-  - python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py
+  - "python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --icon %PYTHON%\\pythonw.exe"
   - cp dist\pyexe.exe %OUTPUT%
   # Save the artifact immediately
   - appveyor PushArtifact %OUTPUT%

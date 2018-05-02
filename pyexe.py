@@ -32,6 +32,23 @@ def alternate_raw_input(prompt=None):
     return six.moves.input('')
 
 
+def get_env_flag(currentValue, key):
+    """
+    Check if the environment has a key.  Parse this as a positive integer, if
+    possible, otherwise treat it like 1.  Return the greater of the current
+    value and the parsed value.
+    """
+    if not os.environ.get(key):
+        return currentValue
+    try:
+        value = int(os.environ.get(key))
+        if value < 0:
+            value = 1
+    except ValueError:
+        value = 1
+    return max(currentValue, value)
+
+
 def print_version(details=1):
     """
     Print the current version.
@@ -54,6 +71,62 @@ def print_version(details=1):
             print('%s: %s' % (module_name, module.__version__))
 
 
+def run_file(runFile, runFileArgv, skipFirstLine, globenv):
+    """
+    Exec a file with a limited set of globals.  We can't use runpy.run_path for
+    (a) skipped first line, (b) Python 2.7 and zipapps (pyz files).  Rather
+    than use run_path in the limited cases where it can be used, we use one
+    code path for executing files in general.
+
+    Enter: runFile: path of the file to exec.
+           runFileArgv: arguments to set sys.argv to.
+           SkipFileLine: True to skip the first line of the file.
+           globenv: global environment to use.
+    """
+    import zipfile
+    sys.argv[:] = runFileArgv
+    if zipfile.is_zipfile(runFile):
+        sys.path[0:0] = [runFile]
+        with zipfile.ZipFile(runFile) as zptr:
+            src = zptr.open('__main__.py').read()
+    else:
+        if not Isolated:
+            sys.path[0:0] = [os.path.split(runFile)[0]]
+        with open(runFile) as fptr:
+            if skipFirstLine:
+                fptr.readline()
+            src = fptr.read()
+    # If we use anything other than the actual globals() dictionary,
+    # multiprocessing doesn't work.  Therefore, mutate globals() and restore it
+    # when done.
+    # We need to hang on to a reference to six.exec_
+    exec_ = six.exec_
+    globs = globals()
+    originalGlobals = globs.copy()
+    globs.clear()
+    globs.update(globenv)
+    globs['__name__'] = '__main__'
+    globs['__file__'] = runFile
+    exec_(src, globs)
+    globs.clear()
+    globs.update(originalGlobals)
+
+
+def skip_once(cls, method):
+    """
+    The first time a mthod of a class is called, skip doing the action.
+
+    Enter: cls: the class instance with the method.
+           method: the name of the method (a string).
+    """
+    orig = getattr(cls, method, None)
+
+    def skip(*args, **kwargs):
+        setattr(cls, method, orig)
+
+    setattr(cls, method, skip)
+
+
 if hasattr(sys, 'frozen'):
     delattr(sys, 'frozen')
 Help = False
@@ -61,14 +134,19 @@ NoSiteFlag = False
 Interactive = None
 InteractiveArgv = None
 Isolated = False
+Optimize = 0
 PrintVersion = 0
+QuietFlag = False
 RunCommand = None
 RunFile = None
 RunModule = None
 SkipFirstLine = False
+StartupFile = None
 Unbuffered = False
 UseEnvironment = True
+VerboseFlag = 0
 skip = 0
+sys.dont_write_bytecode = False
 for i in six.moves.range(1, len(sys.argv)):  # noqa
     if skip:
         skip -= 1
@@ -76,10 +154,16 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
     arg = sys.argv[i]
     if arg.startswith('-') and len(arg) > 1 and arg[1:2] != '-':
         for let in arg[1:]:
-            if let == 'c':
+            if let == 'B':
+                sys.dont_write_bytecode = True
+            elif let == 'c':
                 RunCommand = sys.argv[i+1+skip]
                 RunCommandArgv = ['-c'] + sys.argv[i+2+skip:]
                 skip = len(sys.argv)
+            elif let == 'd':
+                # We don't have to do anything for this flag, since we never
+                # bundle with a debug build of Python
+                pass
             elif let == 'E':
                 UseEnvironment = False
             elif let == 'h':
@@ -93,6 +177,10 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 RunModule = sys.argv[i+1+skip]
                 RunModuleArgv = sys.argv[i+1+skip:]
                 skip = len(sys.argv)
+            elif let == 'O':
+                Optimize += 1
+            elif let == 'q' and sys.version_info > (3, ):
+                QuietFlag = True
             elif let == 's':
                 # We don't have to do anything for this flag, since we never
                 # have a local user site-packages directory in stand-alone mode
@@ -101,16 +189,21 @@ for i in six.moves.range(1, len(sys.argv)):  # noqa
                 NoSiteFlag = True
             elif let == 'u':
                 Unbuffered = True
+            elif let == 'v':
+                VerboseFlag += 1
             elif let == 'V':
                 PrintVersion += 1
             elif let == 'x':
                 SkipFirstLine = True
-            elif let in ('b', 'B', 'd', 'O', 'q', 'v'):
+            elif let in ('b', 't', '3'):
                 # ignore these options
                 pass
-            elif let in ('W', 'X'):
+            elif let in ('Q', 'W', 'X'):
                 # ignore these options
-                skip += 1
+                if arg.startswith('-' + let) and len(arg) > 2:
+                    break
+                else:
+                    skip += 1
             else:
                 Help = True
     elif arg == '--check-hash-based-pycs':
@@ -136,6 +229,7 @@ if Help:
     print_version(0)
     print('usage: %s [option] ... [-c cmd | -m mod | file | -] [arg] ...' % sys.argv[0])
     print("""Options and arguments (and corresponding environment variables):
+-B     : don't write .py[co] files on import; also PYTHONDONTWRITEBYTECODE=x
 -c cmd : program passed in as string (terminates option list)
 -E     : ignore PYTHON* environment variables (such as PYTHONPATH)
 -h     : print this help message and exit (also --help, /?)
@@ -144,10 +238,17 @@ if Help:
     if sys.version_info > (3, ):
         print("""-I     : isolate Python from the user's environment (implies -E and -s)""")
     print("""-m mod : run library module as a script (terminates option list)
--s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
+-O     : optimize generated bytecode slightly; also PYTHONOPTIMIZE=x
+-OO    : remove doc-strings in addition to the -O optimizations""")
+    if sys.version_info > (3, ):
+        print("""-q     : don't print version and copyright messages on interactive startup""")
+    print("""-s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
 -S     : don't imply 'import site' on initialization
--u     : unbuffered binary stdout and stderr; also PYTHONUNBUFFERED=x
+-u     : unbuffered binary stdout and stderr, stdin always buffered;
+         also PYTHONUNBUFFERED=x
          see man page for details on internal buffering relating to '-u'
+-v     : verbose (trace import statements); also PYTHONVERBOSE=x
+         can be supplied multiple times to increase verbosity
 -V     : print the Python version number and exit (also --version).  Use twice
          for more complete information.
 -x     : skip first line of source, allowing use of non-Unix forms of #!cmd
@@ -158,6 +259,7 @@ Stand-alone specific options:
 --all  : imports all bundled modules.
 
 Other environment variables:
+PYTHONSTARTUP: file executed on interactive startup (no default)
 PYTHONPATH   : ';'-separated list of directories prefixed to the
                default module search path.  The result is sys.path.""")
     sys.exit(0)
@@ -165,12 +267,23 @@ if PrintVersion:
     print_version(PrintVersion)
     sys.exit(0)
 if UseEnvironment:
+    if os.environ.get('PYTHONDONTWRITEBYTECODE'):
+        sys.dont_write_bytecode = True
     if Interactive is not True and os.environ.get('PYTHONINSPECT'):
         Interactive = 'check'
-    if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
-        Unbuffered = True
+    Optimize = get_env_flag(Optimize, 'PYTHONOPTIMIZE')
     if os.environ.get('PYTHONPATH'):
         sys.path[0:0] = os.environ.get('PYTHONPATH').split(os.pathsep)
+    StartupFile = os.environ.get('PYTHONSTARTUP')
+    if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
+        Unbuffered = True
+    VerboseFlag = get_env_flag(VerboseFlag, 'PYTHONVERBOSE')
+if VerboseFlag:
+    import ctypes
+    ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value = VerboseFlag
+if Optimize:
+    import ctypes
+    ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_OptimizeFlag').value = Optimize
 bufsize = 1 if sys.version_info >= (3, ) else 0
 if Unbuffered:
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
@@ -182,31 +295,10 @@ if not NoSiteFlag:
 # Generate the globals/locals environment
 globenv = {}
 for key in list(globals().keys()):
-    if key.startswith('_'):
+    if key.startswith('_') and key != '_frozen_name':
         globenv[key] = globals()[key]
 if RunFile:
-    # We can't use runpy.run_path for (a) skipped first line, (b) Python 2.7
-    # and zipapps (pyz files).  Rather than use run_path in the limited cases
-    # where it can be used, we use one code path for executing files in
-    # general.
-    import zipfile
-    sys.argv[:] = RunFileArgv
-    __name__ = '__main__'
-    __file__ = RunFile
-    if zipfile.is_zipfile(RunFile):
-        sys.path[0:0] = [RunFile]
-        with zipfile.ZipFile(RunFile) as zptr:
-            src = zptr.open('__main__.py').read()
-    else:
-        if not Isolated:
-            sys.path[0:0] = [os.path.split(RunFile)[0]]
-        with open(RunFile) as fptr:
-            if SkipFirstLine:
-                discard = fptr.readline()
-            src = fptr.read()
-    # If we use anything other than the actual globals() dictionary,
-    # multiprocessing doesn't work.
-    six.exec_(src)
+    run_file(RunFile, RunFileArgv, SkipFirstLine, globenv)
 elif RunModule:
     import runpy
     sys.argv[:] = RunModuleArgv
@@ -224,6 +316,9 @@ if Interactive:
     if InteractiveArgv:
         sys.argv[:] = InteractiveArgv
     if Interactive is True or sys.stdin.isatty():
+        if not RunFile and not RunModule and not RunCommand and StartupFile:
+            import runpy
+            runpy.run_path(StartupFile, run_name='__main__')
         import code
         cons = code.InteractiveConsole(locals=globenv)
         if not sys.stdout.isatty():
@@ -234,8 +329,10 @@ if Interactive:
         banner = 'Python %s' % sys.version
         if not NoSiteFlag:
             banner += '\nType "help", "copyright", "credits" or "license" for more information.'
-        if RunModule or RunCommand:
+        if RunModule or RunCommand or QuietFlag:
             banner = ''
+            if sys.version_info < (3, ):
+                skip_once(cons, 'write')
         kwargs = {}
         if sys.version_info >= (3, 6):
             kwargs['exitmsg'] = ''
