@@ -15,6 +15,7 @@
 - Added support for `-B` (don't write byte code).
 - Added support for `-O` (optimize).
 - Added support for `-v` (verbose).
+- Added support for `-W` (warnings).
 - Set program icon.
 - When running a Python program, the globals are closer to native Python.
 - Update to setuptools 39.1.0.

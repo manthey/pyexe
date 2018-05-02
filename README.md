@@ -27,5 +27,5 @@ Although the stand-alone Python attempts to have the same features as a normally
 
 - `PYTHONHOME` is ignored.  This option doesn't make sense for a stand-alone version.
 - `-V` and `PYTHONVERBOSE` don't print exactly the same information as native Python, partly because the verbosity is increased after some modules are already imported.
-- Not all command line options and environment variables are implemented.  Specifically, the following are ignored: `-R`, `-W`, `-X`, `--check-hash-based-pycs`, `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONHASHSEED`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`, `PYTHONMALLOC`, `PYTHONCOERCECLOCALE`, `PYTHONDEVMODE`.  Many of these could be handled with a small amount of work.
+- Not all command line options and environment variables are implemented.  Specifically, the following are ignored: `-R`, `--check-hash-based-pycs`, `PYTHONCASEOK`, `PYTHONIOENCODING`, `PYTHONHASHSEED`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`, `PYTHONMALLOC`, `PYTHONCOERCECLOCALE`, `PYTHONDEVMODE`.  Many of these could be handled with a small amount of work.
 

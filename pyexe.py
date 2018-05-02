@@ -151,6 +151,7 @@ VerboseFlag = 0
 Warning3k = 0
 WarningBytes = 0
 WarningDivision = None
+WarningOptions = []
 skip = 0
 sys.dont_write_bytecode = False
 for i in six.moves.range(1, len(sys.argv)):  # noqa
@@ -217,20 +218,28 @@ Try `%s -h' for more information.
                 VerboseFlag += 1
             elif let == 'V':
                 PrintVersion += 1
+            elif let == 'W':
+                if arg.startswith('-' + let) and len(arg) > 2:
+                    WarningOptions.append(arg[2:])
+                    break
+                else:
+                    WarningOptions.append(sys.argv[i+1+skip])
+                    skip += 1
             elif let == 'x':
                 SkipFirstLine = True
+            elif let == 'X':
+                # We don't have do anything for this flag, as the basic
+                # implementation doesn't have such options.
+                if arg.startswith('-' + let) and len(arg) > 2:
+                    break
+                else:
+                    skip += 1
             elif let == '3' and sys.version_info < (3, ):
                 Warning3k += 1
                 TabcheckFlag = max(TabcheckFlag, 1)
             elif let in ('R', ):
                 # ignore these options
                 pass
-            elif let in ('W', 'X'):
-                # ignore these options
-                if arg.startswith('-' + let) and len(arg) > 2:
-                    break
-                else:
-                    skip += 1
             else:
                 Help = True
     elif arg == '--check-hash-based-pycs':
@@ -285,8 +294,13 @@ if Help:
          can be supplied multiple times to increase verbosity
 -V     : print the Python version number and exit (also --version).  Use twice
          for more complete information.
+-W arg : warning control; arg is action:message:category:module:lineno
+         also PYTHONWARNINGS=arg
 -x     : skip first line of source, allowing use of non-Unix forms of #!cmd
-file   : program read from script file
+-X opt : set implementation-specific option""")
+    if sys.version_info < (3, ):
+        print("""-3     : warn about Python 3.x incompatibilities that 2to3 cannot trivially fix""")
+    print("""file   : program read from script file
 -      : program read from stdin (default; interactive mode if a tty)
 arg ...: arguments passed to program in sys.argv[1:]
 Stand-alone specific options:
@@ -312,6 +326,8 @@ if UseEnvironment:
     if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
         Unbuffered = True
     VerboseFlag = get_env_flag(VerboseFlag, 'PYTHONVERBOSE')
+    if os.environ.get('PYTHONWARNINGS'):
+        WarningOptions.extend(os.environ.get('PYTHONWARNINGS').split(','))
 if VerboseFlag:
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value = VerboseFlag
 if TabcheckFlag:
@@ -335,6 +351,8 @@ elif WarningDivision in ('warn', 'warnall') or Warning3k:
                             message='classic [a-z]+ division')
 if Warning3k:
     warnings.filterwarnings('default', category=DeprecationWarning)
+sys.warnoptions[0:0] = WarningOptions
+warnings._processoptions(WarningOptions)
 bufsize = 1 if sys.version_info >= (3, ) else 0
 if Unbuffered:
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)

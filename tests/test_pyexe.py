@@ -442,9 +442,29 @@ def testPy3Flag(exepath, pyversion):
   pass
 raise old()
 """
-
     if pyversion < (3, ):
         out, err = runPyExe(exepath, input=oldclassexc)
         assert '__main__.old:' in err and 'BaseException' not in err
         out, err = runPyExe(exepath, ['-3'], input=oldclassexc)
         assert '__main__.old:' in err and 'BaseException' in err
+
+
+def testWarningsOption(exepath):
+    zipwarn = """import io
+import zipfile
+
+buf = io.BytesIO()
+with zipfile.ZipFile(buf, 'a') as z:
+  z.writestr('name', 'data')
+  z.writestr('name', 'data2')
+"""
+    out, err = runPyExe(exepath, input=zipwarn)
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' not in err
+    out, err = runPyExe(exepath, ['-Werror'], input=zipwarn)
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    out, err = runPyExe(exepath, ['-W', 'error'], input=zipwarn)
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    out, err = runPyExe(exepath, input=zipwarn, env={'PYTHONWARNINGS': 'error'})
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    out, err = runPyExe(exepath, ['-E'], input=zipwarn, env={'PYTHONWARNINGS': 'error'})
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' not in err
