@@ -276,12 +276,14 @@ def testPythonPath(exepath):
 
 def testIsolateFlag(exepath, pyversion):
     if pyversion >= (3, ):
+        local = os.path.split(os.path.abspath('sample_print_path.py'))[0]
+        localrepr = repr(local)
         out, err = runPyExe(exepath, ['sample_print_path.py'],
                             env={'PYTHONPATH': 'C:\\Temp'})
-        assert '\'\'' in out and '\'C:\\\\Temp\'' in out
+        assert localrepr in out and '\'C:\\\\Temp\'' in out
         out, err = runPyExe(exepath, ['-I', 'sample_print_path.py'],
                             env={'PYTHONPATH': 'C:\\Temp'})
-        assert '\'\'' not in out and '\'C:\\\\Temp\'' not in out
+        assert localrepr not in out and '\'C:\\\\Temp\'' not in out
 
 
 def testQuietFlag(exepath, pyversion):

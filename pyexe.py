@@ -87,13 +87,13 @@ def run_file(runFile, runFileArgv, skipFirstLine, globenv):
     """
     import zipfile
     sys.argv[:] = runFileArgv
-    if zipfile.is_zipfile(runFile):
+    if zipfile.is_zipfile(os.path.abspath(runFile)):
         sys.path[0:0] = [runFile]
         with zipfile.ZipFile(runFile) as zptr:
             src = zptr.open('__main__.py').read()
     else:
         if not Isolated:
-            sys.path[0:0] = [os.path.split(runFile)[0]]
+            sys.path[0:0] = [os.path.split(os.path.abspath(runFile))[0]]
         with open(runFile) as fptr:
             if skipFirstLine:
                 fptr.readline()
