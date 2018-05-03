@@ -311,7 +311,8 @@ Stand-alone specific options:
 Other environment variables:
 PYTHONSTARTUP: file executed on interactive startup (no default)
 PYTHONPATH   : ';'-separated list of directories prefixed to the
-               default module search path.  The result is sys.path.""")
+               default module search path.  The result is sys.path.
+PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
     sys.exit(0)
 if PrintVersion:
     print_version(PrintVersion)
@@ -330,6 +331,12 @@ if UseEnvironment:
     VerboseFlag = get_env_flag(VerboseFlag, 'PYTHONVERBOSE')
     if os.environ.get('PYTHONWARNINGS'):
         WarningOptions.extend(os.environ.get('PYTHONWARNINGS').split(','))
+if Isolated:
+    # We have to suppress some environment effects
+    os.environ.pop('PYTHONCASEOK', None)
+    for key in list(sys.modules):  # for Python 3.x
+        if hasattr(sys.modules[key], '_relax_case'):
+            sys.modules[key]._relax_case = lambda: False
 if VerboseFlag:
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value = VerboseFlag
 if TabcheckFlag:

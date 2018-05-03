@@ -1,0 +1,1 @@
+print('mixed CASE module')

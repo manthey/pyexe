@@ -20,6 +20,10 @@
 - When running a Python program, the globals are closer to native Python.
 - Update to setuptools 39.1.0.
 
+### Bug Fixes
+
+- Properly handle combining `-E` with `PYTHONCASEOK`.
+
 ## Version 12
 
 ### Changes

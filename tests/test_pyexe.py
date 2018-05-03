@@ -470,3 +470,29 @@ with zipfile.ZipFile(buf, 'a') as z:
     assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
     out, err = runPyExe(exepath, ['-E'], input=zipwarn, env={'PYTHONWARNINGS': 'error'})
     assert 'Duplicate name: \'name\'' in err and 'Traceback' not in err
+
+
+def testPythonCaseOK(exepath, pyversion):
+    # For these tests, we don't write bytecode files, as that can cache the
+    # results.
+    out, err = runPyExe(exepath, ['-B', '-c', 'import sample_case'])
+    assert 'mixed CASE' not in out
+    assert 'No module named' in err
+    # PYTHONCASEOK doesn't work for Python 2.x yet
+    if pyversion < (3, ):
+        return
+    out, err = runPyExe(exepath, ['-B', '-c', 'import sample_case'],
+                        env={'PYTHONCASEOK': 'true'})
+    assert 'mixed CASE' in out
+    assert 'No module named' not in err
+    # Python 3.x does not honor the -E flag with regards to PYTHONCASEOK
+    out, err = runPyExe(exepath, ['-B', '-E', '-c', 'import sample_case'],
+                        env={'PYTHONCASEOK': 'true'})
+    assert 'mixed CASE' in out
+    assert 'No module named' not in err
+    # But Python 3.6 -I is honored
+    if pyversion >= (3, 6):
+        out, err = runPyExe(exepath, ['-B', '-I', '-c', 'import sample_case'],
+                            env={'PYTHONCASEOK': 'true'})
+        assert 'mixed CASE' not in out
+        assert 'No module named' in err
