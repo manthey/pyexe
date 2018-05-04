@@ -6,13 +6,23 @@
 
 - Added support for zipapps.
 - Added support for `PYTHONPATH`.
-- Added support for `-I` in Python 3.x variants.
-- Added support for `-q` in Python 3.x variants.
-- Added support for `-B`.
-- Added support for `-O`.
-- Added support for `-v`.
+- Added support for `-I` in Python 3.x variants (isolate mode).
+- Added support for `-q` in Python 3.x variants (quiet).
+- Added support for `-Q` in Python 2.x variants (division options).
+- Added support for `-t` in Python 2.x variants (tab check).
+- Added support for `-3` in Python 2.x variants (Python 3 incompatibility warnings).
+- Added support for `-b` (bytes warning).
+- Added support for `-B` (don't write byte code).
+- Added support for `-O` (optimize).
+- Added support for `-v` (verbose).
+- Added support for `-W` (warnings).
 - Set program icon.
 - When running a Python program, the globals are closer to native Python.
+- Update to setuptools 39.1.0.
+
+### Bug Fixes
+
+- Properly handle combining `-E` with `PYTHONCASEOK`.
 
 ## Version 12
 

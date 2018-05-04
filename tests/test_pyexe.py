@@ -12,7 +12,8 @@ def exepath(request):
 @pytest.fixture
 def pyversion(exepath):
     out, err = runPyExe(exepath, ['--version'])
-    return (int(part) for part in (out + err).split()[1].split('.'))
+    version = (out + err).strip().split()[-1]
+    return tuple(int(part) for part in version.split('.'))
 
 
 def runPyExe(exepath, options=[], input=None, env={}):
@@ -275,12 +276,14 @@ def testPythonPath(exepath):
 
 def testIsolateFlag(exepath, pyversion):
     if pyversion >= (3, ):
+        local = os.path.split(os.path.abspath('sample_print_path.py'))[0]
+        localrepr = repr(local)
         out, err = runPyExe(exepath, ['sample_print_path.py'],
                             env={'PYTHONPATH': 'C:\\Temp'})
-        assert '\'\'' in out and '\'C:\\\\Temp\'' in out
+        assert localrepr in out and '\'C:\\\\Temp\'' in out
         out, err = runPyExe(exepath, ['-I', 'sample_print_path.py'],
                             env={'PYTHONPATH': 'C:\\Temp'})
-        assert '\'\'' not in out and '\'C:\\\\Temp\'' not in out
+        assert localrepr not in out and '\'C:\\\\Temp\'' not in out
 
 
 def testQuietFlag(exepath, pyversion):
@@ -383,3 +386,113 @@ def testVerboseFlag(exepath):
     out, err = runPyExe(exepath, ['-E', '-c', 'import bisect'],
                         env={'PYTHONVERBOSE': '2'})
     assert 'bisect' not in err and '# cleanup' not in err
+
+
+def testBytesWarningFlag(exepath, pyversion):
+    if pyversion >= (3, ):
+        out, err = runPyExe(exepath, ['-c', 'print(str(b"abc"))'])
+        assert 'abc' in out
+        assert 'BytesWarning' not in err
+        out, err = runPyExe(exepath, ['-b', '-c', 'print(str(b"abc"))'])
+        assert 'abc' in out
+        assert 'BytesWarning' in err
+        out, err = runPyExe(exepath, ['-b', '-b', '-c', 'print(str(b"abc"))'])
+        assert 'abc' not in out
+        assert 'BytesWarning' in err
+
+
+def testDivisionFlag(exepath, pyversion):
+    if pyversion < (3, ):
+        out, err = runPyExe(exepath, ['-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2, 1.75]' in out
+        assert 'division' not in err
+        out, err = runPyExe(exepath, ['-Qold', '-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2, 1.75]' in out
+        assert 'division' not in err
+        out, err = runPyExe(exepath, ['-Qwarn', '-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2, 1.75]' in out
+        assert 'classic int division' in err
+        assert 'classic float division' not in err
+        out, err = runPyExe(exepath, ['-Qwarnall', '-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2, 1.75]' in out
+        assert 'classic int division' in err
+        assert 'classic float division' in err
+        out, err = runPyExe(exepath, ['-Qnew', '-c', 'print("%r" % [11/4, 7.0/4])'])
+        assert '[2.75, 1.75]' in out
+        assert 'division' not in err
+
+
+def testTabcheckFlag(exepath, pyversion):
+    withtabs = """def add(a, b, c):
+        sum = a + b
+\treturn sum + c
+print(add(1, 2, 3))"""
+    if pyversion < (3, ):
+        out, err = runPyExe(exepath, input=withtabs)
+        assert '6' in out
+        assert 'inconsistent use of tabs' not in err
+        out, err = runPyExe(exepath, ['-t'], input=withtabs)
+        assert '6' in out
+        assert 'inconsistent use of tabs' in err and 'TabError' not in err
+        out, err = runPyExe(exepath, ['-t', '-t'], input=withtabs)
+        assert '6' not in out
+        assert 'inconsistent use of tabs' in err and 'TabError' in err
+
+
+def testPy3Flag(exepath, pyversion):
+    oldclassexc = """class old:
+  pass
+raise old()
+"""
+    if pyversion < (3, ):
+        out, err = runPyExe(exepath, input=oldclassexc)
+        assert '__main__.old:' in err and 'BaseException' not in err
+        out, err = runPyExe(exepath, ['-3'], input=oldclassexc)
+        assert '__main__.old:' in err and 'BaseException' in err
+
+
+def testWarningsOption(exepath):
+    zipwarn = """import io
+import zipfile
+
+buf = io.BytesIO()
+with zipfile.ZipFile(buf, 'a') as z:
+  z.writestr('name', 'data')
+  z.writestr('name', 'data2')
+"""
+    out, err = runPyExe(exepath, input=zipwarn)
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' not in err
+    out, err = runPyExe(exepath, ['-Werror'], input=zipwarn)
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    out, err = runPyExe(exepath, ['-W', 'error'], input=zipwarn)
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    out, err = runPyExe(exepath, input=zipwarn, env={'PYTHONWARNINGS': 'error'})
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    out, err = runPyExe(exepath, ['-E'], input=zipwarn, env={'PYTHONWARNINGS': 'error'})
+    assert 'Duplicate name: \'name\'' in err and 'Traceback' not in err
+
+
+def testPythonCaseOK(exepath, pyversion):
+    # For these tests, we don't write bytecode files, as that can cache the
+    # results.
+    out, err = runPyExe(exepath, ['-B', '-c', 'import sample_case'])
+    assert 'mixed CASE' not in out
+    assert 'No module named' in err
+    # PYTHONCASEOK doesn't work for Python 2.x yet
+    if pyversion < (3, ):
+        return
+    out, err = runPyExe(exepath, ['-B', '-c', 'import sample_case'],
+                        env={'PYTHONCASEOK': 'true'})
+    assert 'mixed CASE' in out
+    assert 'No module named' not in err
+    # Python 3.x does not honor the -E flag with regards to PYTHONCASEOK
+    out, err = runPyExe(exepath, ['-B', '-E', '-c', 'import sample_case'],
+                        env={'PYTHONCASEOK': 'true'})
+    assert 'mixed CASE' in out
+    assert 'No module named' not in err
+    # But Python 3.6 -I is honored
+    if pyversion >= (3, 6):
+        out, err = runPyExe(exepath, ['-B', '-I', '-c', 'import sample_case'],
+                            env={'PYTHONCASEOK': 'true'})
+        assert 'mixed CASE' not in out
+        assert 'No module named' in err
