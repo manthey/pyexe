@@ -1,29 +1,33 @@
 environment:
   matrix:
     - PYTHON: "C:\\Python27"
+      INSTALL_OPTIONS: 2.7 --min=15
       OUTPUT: "py27.exe"
+      ALTPYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python27-x64"
+      INSTALL_OPTIONS: 2.7 --min=15 --64
       OUTPUT: "py27-64.exe"
+      ALTPYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python35"
+      INSTALL_OPTIONS: 3.5 --min=4
       OUTPUT: "py35.exe"
+      ALTPYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python35-x64"
+      INSTALL_OPTIONS: 3.5 --min=4 --64
       OUTPUT: "py35-64.exe"
+      ALTPYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python36"
+      INSTALL_OPTIONS: 3.6 --min=5
       OUTPUT: "py36.exe"
+      ALTPYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python36-x64"
+      INSTALL_OPTIONS: 3.6 --min=5 --64
       OUTPUT: "py36-64.exe"
+      ALTPYTHON: "C:\\Python36"
 
 init:
   - SET PROJDIR=%cd%
   - SET ORIGPATH=%PATH%
-  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-  - python -m pip install --upgrade pip
-  - python -m pip install --upgrade setuptools
-  - python -m pip install pywin32 psutil six setuptools
-  - python -m pip install pyinstaller
-  # Remove the site module hook from PyInstaller; we need the site module as is
-  - "del /q %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\hook-site.*"
-  - "del /q /s %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\__pycache__"
   - mkdir c:\u
   - cd c:\u
   - curl -L -O "https://github.com/upx/upx/releases/download/v3.94/upx394w.zip"
@@ -31,13 +35,34 @@ init:
   - cd %PROJDIR%
 
 build_script:
+  # Upgrade the appveyor python version
+  - "SET PATH=%ALTPYTHON%;%ALTPYTHON%\\Scripts;%ORIGPATH%"
+  - python -m pip install --upgrade requests
+  - "python install_python.py %INSTALL_OPTIONS% --out=%PYTHON% --force"
+  - del /S /Q %PYTHON%\*.pyc >NUL
+  - del /S /Q %PYTHON%\*.pyo >NUL
+  # Use the specific python version for building
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%ORIGPATH%"
+  - python -m pip install --upgrade pip
+  - python -m pip install --upgrade setuptools
+  - python -m pip install --upgrade pywin32 psutil six setuptools
+  # Generate the list of modules we need to import
+  - del /S /Q %PYTHON%\*.pyc >NUL
+  - del /S /Q %PYTHON%\*.pyo >NUL
+  - python modules_pyexe.py pyexe.py
+  # Install PyInstaller
+  - python -m pip install pyinstaller
+  # Remove the site module hook from PyInstaller; we need the site module as is
+  - "del /q %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\hook-site.*"
+  - "del /q /s %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\__pycache__"
   # Copy a build hook to PyInstaller to include the cacerts.pem file for pip.
   - "copy hooks\\hook*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\."
   # Replace the multiprocessing loader hook
   - "copy hooks\\pyi_rth*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader\\rthooks\\."
   # Replace the stage 3 importer
   - "copy hooks\\pyimod03_importers.py %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader\\."
-  - python modules_pyexe.py pyexe.py
+  - del /S /Q %PYTHON%\*.pyc >NUL
+  - del /S /Q %PYTHON%\*.pyo >NUL
   # Save the artifact immediately
   - appveyor PushArtifact pyexe.py
   - "python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --icon %PYTHON%\\pythonw.exe"
