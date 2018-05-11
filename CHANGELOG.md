@@ -1,6 +1,11 @@
 # Release Notes
 
-## Unreleased
+## Version 13
+
+### Package Versions
+
+- Python 2.7.15, 3.5.4, 3.6.5.
+- pywin32 223, pip 10.0.1, psutil 5.4.5, setuptools 39.1.0, six 1.11.0
 
 ### Changes
 
