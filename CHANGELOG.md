@@ -19,6 +19,7 @@
 - Set program icon.
 - When running a Python program, the globals are closer to native Python.
 - Update to setuptools 39.1.0.
+- Update to Python 2.7.15, 3.5.4, 3.6.5.
 
 ### Bug Fixes
 
