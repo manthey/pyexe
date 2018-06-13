@@ -105,7 +105,7 @@ def run_file(runFile, runFileArgv, skipFirstLine, globenv):
     exec_ = six.exec_
     globs = globals()
     originalGlobals = globs.copy()
-    globs.clear()
+    # globs.clear()
     globs.update(globenv)
     globs['__name__'] = '__main__'
     globs['__file__'] = runFile
@@ -373,7 +373,7 @@ if not NoSiteFlag:
 # Generate the globals/locals environment
 globenv = {}
 for key in list(globals().keys()):
-    if key.startswith('_') and key != '_frozen_name':
+    if key.startswith('_') or key in ('os', 'PyInstallerImportError'):  # and key != '_frozen_name':
         globenv[key] = globals()[key]
 if RunFile:
     run_file(RunFile, RunFileArgv, SkipFirstLine, globenv)
@@ -383,14 +383,20 @@ elif RunModule:
     runpy.run_module(RunModule, run_name='__main__')
 elif RunCommand is not None:
     if not Isolated:
-        sys.path[0:0] = ['']
+        # Regular python just adds '' to the path, whereas we add '' and '.'
+        # Without doing so ctypes.cdll.LoadLibrary doesn't properly search the
+        # local path.
+        sys.path[0:0] = ['', '.']
     sys.argv[:] = RunCommandArgv
     six.exec_(RunCommand, globenv)
 elif Interactive is None:
     Interactive = 'check'
 if Interactive:
     if not Isolated:
-        sys.path[0:0] = ['']
+        # Regular python just adds '' to the path, whereas we add '' and '.'
+        # Without doing so ctypes.cdll.LoadLibrary doesn't properly search the
+        # local path.
+        sys.path[0:0] = ['', '.']
     if InteractiveArgv:
         sys.argv[:] = InteractiveArgv
     if Interactive is True or sys.stdin.isatty():
