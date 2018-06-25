@@ -78,7 +78,7 @@ test_script:
   - SET PATH=%ORIGPATH%
   - pip install pytest
   - cd tests
-  # Build a zipapp for our tests; it doesn't exist before 3.5, our we could use
+  # Build a zipapp for our tests; it doesn't exist before 3.5, we could use
   # our own executable to do it.
   - C:\Python36-x64\python -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
   # Make sure we only have original files here.
