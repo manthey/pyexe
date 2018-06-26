@@ -496,3 +496,13 @@ def testPythonCaseOK(exepath, pyversion):
                             env={'PYTHONCASEOK': 'true'})
         assert 'mixed CASE' not in out
         assert 'No module named' in err
+
+
+def testImportFromExePath(exepath):
+    modpath = os.path.join(os.path.dirname(exepath), 'mod_abc.py')
+    try:
+        open(modpath, 'wt').write('foo = "bar"')
+        out, err = runPyExe(exepath, ['-c', 'import mod_abc;print(mod_abc.foo)'])
+        assert 'bar' in out
+    finally:
+        os.unlink(modpath)

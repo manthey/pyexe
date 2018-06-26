@@ -317,6 +317,10 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
 if PrintVersion:
     print_version(PrintVersion)
     sys.exit(0)
+# Explicitly add the path of the current executable to the system paths.
+# Installed Python always incldues this path, but PyInstaller changes it to the
+# expanded path.
+sys.path[0:0] = [os.path.abspath(os.path.dirname(sys.executable))]
 if UseEnvironment:
     if os.environ.get('PYTHONDONTWRITEBYTECODE'):
         sys.dont_write_bytecode = True
