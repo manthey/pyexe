@@ -28,11 +28,14 @@ environment:
 init:
   - SET PROJDIR=%cd%
   - SET ORIGPATH=%PATH%
-  - mkdir c:\u
-  - cd c:\u
-  - curl -L -O "https://github.com/upx/upx/releases/download/v3.94/upx394w.zip"
-  - unzip upx394w.zip
-  - cd %PROJDIR%
+  # Disable upx; it doesn't work with Python 3 for some reason
+  # - mkdir c:\u
+  # - cd c:\u
+  # - curl -L -O "https://github.com/upx/upx/releases/download/v3.94/upx394w.zip"
+  # - unzip upx394w.zip
+  # - cd %PROJDIR%
+  # Print the build system version
+  - ver
 
 build_script:
   # Upgrade the appveyor python version
@@ -65,7 +68,7 @@ build_script:
   - del /S /Q %PYTHON%\*.pyo >NUL
   # Save the artifact immediately
   - appveyor PushArtifact pyexe.py
-  - "python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w\\upx.exe --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --icon %PYTHON%\\pythonw.exe"
+  - "python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --icon %PYTHON%\\pythonw.exe"
   - cp dist\pyexe.exe %OUTPUT%
   # Save the artifact immediately
   - appveyor PushArtifact %OUTPUT%
