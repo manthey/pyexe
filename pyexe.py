@@ -374,9 +374,16 @@ sys.warnoptions[0:0] = WarningOptions
 warnings._processoptions(WarningOptions)
 bufsize = 1 if sys.version_info >= (3, ) else 0
 if Unbuffered:
+    import msvcrt
+    msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
+    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+    msvcrt.setmode(sys.stderr.fileno(), os.O_BINARY)
     sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
-    sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
-    sys.stderr = os.fdopen(sys.stderr.fileno(), 'a+', bufsize)
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'a', bufsize)
+    try:
+        sys.stderr = os.fdopen(sys.stderr.fileno(), 'a', bufsize)
+    except (ValueError, OSError):
+        pass
 if not NoSiteFlag:
     import site
     site.main()
@@ -412,8 +419,14 @@ if Interactive:
         if not sys.stdout.isatty():
             cons.raw_input = alternate_raw_input
             if not Unbuffered:
-                sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
-                sys.stderr = os.fdopen(sys.stderr.fileno(), 'a+', bufsize)
+                import msvcrt
+                msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+                msvcrt.setmode(sys.stderr.fileno(), os.O_BINARY)
+                # sys.stdout = os.fdopen(sys.stdout.fileno(), 'a', bufsize)
+                # try:
+                #     sys.stderr = os.fdopen(sys.stderr.fileno(), 'a', bufsize)
+                # except (ValueError, OSError):
+                #     pass
         banner = 'Python %s' % sys.version
         if not NoSiteFlag:
             banner += '\nType "help", "copyright", "credits" or "license" for more information.'
