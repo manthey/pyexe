@@ -496,3 +496,29 @@ def testPythonCaseOK(exepath, pyversion):
                             env={'PYTHONCASEOK': 'true'})
         assert 'mixed CASE' not in out
         assert 'No module named' in err
+
+
+def testImportFromExePath(exepath):
+    modpath = os.path.join(os.path.dirname(exepath), 'mod_exepath.py')
+    try:
+        open(modpath, 'wt').write('foo = "bar"')
+        out, err = runPyExe(exepath, ['-c', 'import mod_exepath;print(mod_exepath.foo)'])
+        assert 'bar' in out
+    finally:
+        os.unlink(modpath)
+    sitepath = os.path.join(os.path.dirname(exepath), 'Lib', 'site-packages')
+    modpath = os.path.join(sitepath, 'mod_libsite.py')
+    try:
+        os.makedirs(sitepath)
+    except Exception:
+        pass
+    try:
+        open(modpath, 'wt').write('foo = "baz"')
+        out, err = runPyExe(exepath, ['-c', 'import mod_libsite;print(mod_libsite.foo)'])
+        assert 'baz' in out
+    finally:
+        os.unlink(modpath)
+        try:
+            os.removedirs(sitepath)
+        except Exception:
+            pass

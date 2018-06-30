@@ -317,6 +317,13 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
 if PrintVersion:
     print_version(PrintVersion)
     sys.exit(0)
+# Explicitly add the path of the current executable to the system paths and its
+# subpath of Lib\site-packages.  Installed Python always includes these paths,
+# but PyInstaller changes them to the expanded paths.
+sys.path[0:0] = [
+    os.path.abspath(os.path.dirname(sys.executable)),
+    os.path.abspath(os.path.join(os.path.dirname(sys.executable), 'Lib', 'site-packages'))
+]
 if UseEnvironment:
     if os.environ.get('PYTHONDONTWRITEBYTECODE'):
         sys.dont_write_bytecode = True
