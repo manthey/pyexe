@@ -7,7 +7,7 @@ class _pyexePopen(subprocess.Popen):
     if sys.version_info >= (3, ):
         def __init__(self, args, bufsize=-1, executable=None, stdin=None,
                      stdout=None, stderr=None, preexec_fn=None,
-                     close_fds=subprocess._PLATFORM_DEFAULT_CLOSE_FDS,
+                     close_fds=getattr(subprocess, '_PLATFORM_DEFAULT_CLOSE_FDS', True),
                      shell=False, cwd=None, env=None, *arglist, **kwargs):
             with self._prepare_env(args, executable, env):
                 result = super(_pyexePopen, self).__init__(
