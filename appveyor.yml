@@ -53,8 +53,11 @@ build_script:
   - del /S /Q %PYTHON%\*.pyc >NUL
   - del /S /Q %PYTHON%\*.pyo >NUL
   - python modules_pyexe.py pyexe.py
-  # Install PyInstaller
-  - python -m pip install pyinstaller
+  # Install PyInstaller.  We patch various aspects of PyInstaller, so use a
+  # fixed version.
+  - python -m pip install pyinstaller==3.3.1
+  # Install a patching program
+  - python -m pip install patch
   # Remove the site module hook from PyInstaller; we need the site module as is
   - "del /q %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\hook-site.*"
   - "del /q /s %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\__pycache__"
@@ -63,7 +66,10 @@ build_script:
   # Replace the multiprocessing loader hook
   - "copy hooks\\pyi_rth*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader\\rthooks\\."
   # Replace the stage 3 importer
-  - "copy hooks\\pyimod03_importers.py %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader\\."
+  - "pushd %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader && python -m patch %PROJDIR%\\hooks\\pyimod03_importers.py.diff && popd"
+  # Patch the PyInstaller building\utils.py to avoid storing project path
+  # names.
+  - "pushd %PYTHON%\\Lib\\site-packages\\PyInstaller\\building && python -m patch %PROJDIR%\\hooks\\utils.py.diff && popd"
   - del /S /Q %PYTHON%\*.pyc >NUL
   - del /S /Q %PYTHON%\*.pyo >NUL
   # Save the artifact immediately

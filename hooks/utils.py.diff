@@ -1,0 +1,9 @@
+--- utils.py	Fri Jun 29 21:51:11 2018
++++ utils.py	Fri Jun 29 21:46:51 2018
+@@ -613,5 +613,5 @@
+         original_filename = os.path.normpath(co.co_filename)
+         for f in replace_paths:
+-            if original_filename.startswith(f):
++            if len(f) and original_filename.startswith(f):
+                 new_filename = original_filename[len(f):]
+                 break

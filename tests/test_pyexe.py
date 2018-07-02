@@ -498,6 +498,14 @@ def testPythonCaseOK(exepath, pyversion):
         assert 'No module named' in err
 
 
+@pytest.mark.pyexe
+def testBuildPathNotInTracebacks(exepath):
+    out, err = runPyExe(exepath, [
+        '-c', """import psutil;psutil.net_connections('foo')"""])
+    assert 'site-packages\\psutil' in err
+    assert 'C:\\Python' not in err
+
+
 def testImportFromExePath(exepath):
     modpath = os.path.join(os.path.dirname(exepath), 'mod_exepath.py')
     try:

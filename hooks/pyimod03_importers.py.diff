@@ -1,0 +1,43 @@
+--- pyimod03_importers.py	Fri Jun 29 21:51:12 2018
++++ pyimod03_importers.py	Sat Apr 21 23:56:15 2018
+@@ -274,4 +274,7 @@
+             module_loader = self
+             trace("import %s # PyInstaller PYZ", fullname)
++        """
++        # Disable this mode; it doesn't appear necessary for the modules pyexe
++        # includes, and is prejudicial to importing external modules.
+         elif path is not None:
+             # Try to handle module.__path__ modifications by the modules themselves
+@@ -294,4 +297,5 @@
+                           entry_name, fullname, p)
+                     break
++        """
+         # Release the interpreter's import lock.
+         imp_unlock()
+@@ -323,4 +327,12 @@
+             module = sys.modules.get(fullname)
+ 
++            if entry_name != fullname:
++                filename = self.get_filename(entry_name)
++                for mod in list(sys.modules):
++                    if getattr(sys.modules[mod], '__file__', None) == filename:
++                        module = sys.modules[mod]
++                        sys.modules[fullname] = module
++                        break
++
+             # Module not in sys.modules - load it and it to sys.modules.
+             if module is None:
+@@ -526,4 +538,7 @@
+             entry_name = fullname
+             trace("import %s # PyInstaller PYZ", fullname)
++        """
++        # Disable this mode; it doesn't appear necessary for the modules pyexe
++        # includes, and is prejudicial to importing external modules.
+         elif path is not None:
+             # Try to handle module.__path__ modifications by the modules themselves
+@@ -547,4 +562,5 @@
+             else:
+                 entry_name = None
++        """
+ 
+         if entry_name is None:
