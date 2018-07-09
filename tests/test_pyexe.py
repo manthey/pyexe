@@ -34,7 +34,12 @@ def runPyExe(exepath, options=[], input=None, env={}):
     proc = subprocess.Popen(
         cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, env=cmdenv)
+    if input and bytes != str:
+        input = input.encode('utf8')
     out, err = proc.communicate(input)
+    if bytes != str:
+        out = out.decode('utf8')
+        err = err.decode('utf8')
     return out, err
 
 
