@@ -129,6 +129,62 @@ def skip_once(cls, method):
     setattr(cls, method, skip)
 
 
+def std_pipes_encoding(encoding):
+    """
+    Set the encoding of stdin, stdout, and stderr.
+    """
+    import codecs
+
+    encoding = codecs.lookup(encoding).name
+    try:
+        stdinenc = codecs.lookup(sys.stdin.encoding).name
+    except (LookupError, TypeError):
+        stdinenc = None
+    try:
+        stdoutenc = codecs.lookup(sys.stdout.encoding).name
+    except (LookupError, TypeError):
+        stdoutenc = None
+    try:
+        stderrenc = codecs.lookup(sys.stderr.encoding).name
+    except (LookupError, TypeError):
+        stderrenc = None
+    return  # ##DWM::
+    if sys.version_info < (3, ):
+        if not sys.stdin.closed and stdinenc != encoding:
+            sys.stdin = codecs.getreader(encoding)(sys.stdin)
+            sys.stdin.encoding = encoding
+        if not sys.stdout.closed and stdoutenc != encoding:
+            sys.stdout = codecs.getwriter(encoding)(sys.stdout)
+            sys.stdout.encoding = encoding
+        if not sys.stderr.closed and stderrenc != encoding:
+            sys.stderr = codecs.getwriter(encoding)(sys.stderr)
+            sys.stderr.encoding = encoding
+    else:
+        import io
+
+        if not sys.stdin.closed and stdinenc != encoding:
+            sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding=encoding)
+        if not sys.stdout.closed and stdoutenc != encoding:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=encoding)
+        if not sys.stderr.closed and stderrenc != encoding:
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding=encoding)
+
+
+def std_pipes_unbuffer():
+    """
+    Adjust stdin, stdout, stderr to be unbuffered.  For Python 3, this uses
+    bufsize 1, which is line buffering.  To use 0, the files need to be in
+    binary mode, which has other implications.
+    """
+    bufsize = 1 if sys.version_info >= (3, ) else 0
+    if not sys.stdin.closed:
+        sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
+    if not sys.stdout.closed:
+        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', bufsize)
+    if not sys.stderr.closed:
+        sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', bufsize)
+
+
 if hasattr(sys, 'frozen'):
     delattr(sys, 'frozen')
 Help = False
@@ -324,6 +380,7 @@ sys.path[0:0] = [
     os.path.abspath(os.path.dirname(sys.executable)),
     os.path.abspath(os.path.join(os.path.dirname(sys.executable), 'Lib', 'site-packages'))
 ]
+encoding = sys.getdefaultencoding()
 if UseEnvironment:
     if os.environ.get('PYTHONDONTWRITEBYTECODE'):
         sys.dont_write_bytecode = True
@@ -338,6 +395,7 @@ if UseEnvironment:
     VerboseFlag = get_env_flag(VerboseFlag, 'PYTHONVERBOSE')
     if os.environ.get('PYTHONWARNINGS'):
         WarningOptions.extend(os.environ.get('PYTHONWARNINGS').split(','))
+    encoding = os.environ.get('PYTHONIOENCODING', encoding)
 if Isolated:
     # We have to suppress some environment effects
     os.environ.pop('PYTHONCASEOK', None)
@@ -369,11 +427,9 @@ if Warning3k:
     warnings.filterwarnings('default', category=DeprecationWarning)
 sys.warnoptions[0:0] = WarningOptions
 warnings._processoptions(WarningOptions)
-bufsize = 1 if sys.version_info >= (3, ) else 0
+std_pipes_encoding(encoding)
 if Unbuffered:
-    sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
-    sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
-    sys.stderr = os.fdopen(sys.stderr.fileno(), 'a+', bufsize)
+    std_pipes_unbuffer()
 if not NoSiteFlag:
     import site
     site.main()
@@ -409,8 +465,7 @@ if Interactive:
         if not sys.stdout.isatty():
             cons.raw_input = alternate_raw_input
             if not Unbuffered:
-                sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
-                sys.stderr = os.fdopen(sys.stderr.fileno(), 'a+', bufsize)
+                std_pipes_unbuffer()
         banner = 'Python %s' % sys.version
         if not NoSiteFlag:
             banner += '\nType "help", "copyright", "credits" or "license" for more information.'
