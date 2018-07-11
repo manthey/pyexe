@@ -1,5 +1,27 @@
 # Release Notes
 
+## Version 14
+
+### Package Versions
+
+- Python 2.7.15, 3.5.4, 3.6.6.
+- pywin32 223, pip 10.0.1, psutil 5.4.6, setuptools 40.0.0, six 1.11.0
+
+### Changes
+
+- Added setuptools support files.
+- Update to setuptools 40.0.0.
+- Update to Python 3.6.6.
+- Added the executable path to the system path.
+
+### Bug Fixes
+
+- Better hide internal filenames.
+
+### Build
+
+- Don't try to use upx.  It wan't actually being used before, and it doesn't work on appveyor with Python 3.x.
+
 ## Version 13
 
 ### Package Versions
