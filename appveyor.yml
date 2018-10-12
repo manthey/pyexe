@@ -55,7 +55,7 @@ build_script:
   - python modules_pyexe.py pyexe.py
   # Install PyInstaller.  We patch various aspects of PyInstaller, so use a
   # fixed version.
-  - python -m pip install pyinstaller==3.3.1
+  - python -m pip install pyinstaller==3.4
   # Install a patching program
   - python -m pip install patch
   # Remove the site module hook from PyInstaller; we need the site module as is
