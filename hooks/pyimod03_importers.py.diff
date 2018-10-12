@@ -1,6 +1,7 @@
---- pyimod03_importers.py	Fri Jun 29 21:51:12 2018
-+++ pyimod03_importers.py	Sat Apr 21 23:56:15 2018
-@@ -274,4 +274,7 @@
+--- pyimod03_importers.py	Thu Oct 11 22:13:08 2018
++++ pyimod03_importers.py	Thu Oct 11 22:25:26 2018
+@@ -274,6 +274,9 @@
+             # Tell the import machinery to use self.load_module() to load the module.
              module_loader = self
              trace("import %s # PyInstaller PYZ", fullname)
 +        """
@@ -8,13 +9,17 @@
 +        # includes, and is prejudicial to importing external modules.
          elif path is not None:
              # Try to handle module.__path__ modifications by the modules themselves
-@@ -294,4 +297,5 @@
+             # Reverse the fake __path__ we added to the package module to a
+@@ -294,6 +297,7 @@
+                     trace("import %s as %s # PyInstaller PYZ (__path__ override: %s)",
                            entry_name, fullname, p)
                      break
 +        """
          # Release the interpreter's import lock.
          imp_unlock()
-@@ -323,4 +327,12 @@
+         if module_loader is None:
+@@ -323,6 +327,14 @@
+             # in sys.modules, the loader must use that existing module.
              module = sys.modules.get(fullname)
  
 +            if entry_name != fullname:
@@ -27,7 +32,9 @@
 +
              # Module not in sys.modules - load it and it to sys.modules.
              if module is None:
-@@ -526,4 +538,7 @@
+                 # Load code object from the bundled ZIP archive.
+@@ -521,6 +533,9 @@
+         if fullname in self.toc:
              entry_name = fullname
              trace("import %s # PyInstaller PYZ", fullname)
 +        """
@@ -35,9 +42,12 @@
 +        # includes, and is prejudicial to importing external modules.
          elif path is not None:
              # Try to handle module.__path__ modifications by the modules themselves
-@@ -547,4 +562,5 @@
+             # Reverse the fake __path__ we added to the package module to a
+@@ -542,6 +557,7 @@
+                     break
              else:
                  entry_name = None
 +        """
  
          if entry_name is None:
+             trace("# %s not found in PYZ", fullname)
