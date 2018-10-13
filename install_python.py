@@ -89,11 +89,11 @@ Specify just the major and minor version, such as 2.7 or 3.6.
         altcmd = [installer, '/quiet', '/repair']
     cmdopts = [
         'TargetDir=' + dest, 'AssociateFiles=0', 'CompileAll=0',
-        'PrependPath=0', 'Shortcuts=0', 'Include_doc=0', 'Include_dev=0',
+        'PrependPath=0', 'Shortcuts=0', 'Include_doc=0', 'Include_dev=1',
         'Include_debug=0', 'Include_exe=1', 'Include_launcher=0',
-        'InstallLauncherAllUsers=0', 'Include_lib=1', 'Include_symbols=0',
-        'Include_tcltk=0', 'Include_test=0', 'Include_tools=0',
-        'SimpleInstall=1']
+        'InstallLauncherAllUsers=0', 'Include_lib=1', 'Include_pip=1',
+        'Include_symbols=0', 'Include_tcltk=0', 'Include_test=0',
+        'Include_tools=0', 'SimpleInstall=1']
     if remove:
         print('Remove: ' + ' '.join(uncmd))
         try:

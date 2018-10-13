@@ -1,5 +1,17 @@
 # Release Notes
 
+## Unreleased
+
+### Package Versions
+
+- Python 2.7.15, 3.5.4, 3.6.6, 3.7.0
+- pywin32 224, pip 18.1, psutil 5.4.7, setuptools 40.4.3, six 1.11.0
+
+### Changes
+
+- Updated to PyInstaller 3.4.
+- Added support for Python 3.7.
+
 ## Version 14
 
 ### Package Versions

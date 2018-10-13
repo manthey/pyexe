@@ -26,7 +26,7 @@ ExcludeModules = [
     'tkFont', 'tkMessageBox', 'tkSimpleDialog', 'tkinter', 'ttk', 'turtle',
     'turtledemo', 'tcl', 'tk', 'Tkinter',
     # These cause test importation fail
-    'idlelib', 'win32traceutil',
+    'idlelib', 'win32traceutil', 'venv',
     # These cause --all flag to fail
     'pywin.debugger', 'pywin.dialogs.ideoptions',
     'pywin.framework.dbgcommands', 'pywin.framework.editor',
@@ -132,7 +132,7 @@ the module list is written to stdout.""")
         data = open(pyexePath, 'rb').read()
         imports = ('\n    import '.join([''] + modules) + '\n').encode('utf8')
         data = data.split(head, 1)[0] + head + imports + tail + data.split(tail, 1)[1]
-        open(sys.argv[1], 'wb').write(data)
+        open(pyexePath, 'wb').write(data)
     else:
         for item in modules:
             print('import %s' % item)

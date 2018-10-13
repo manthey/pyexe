@@ -357,6 +357,9 @@ if WarningBytes:
         if f[2] == BytesWarning:
             warnings.filters[idx] = tuple(
                 ['default' if WarningBytes == 1 else 'error'] + list(f)[1:])
+    if not any([f for f in warnings.filters if f[2] == BytesWarning]):
+        warnings.filterwarnings(
+            'default' if WarningBytes == 1 else 'error', category=BytesWarning)
     ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_BytesWarningFlag').value = WarningBytes
 if WarningDivision == 'new':
     ctypes.c_int.in_dll(ctypes.pythonapi, '_Py_QnewFlag').value = 1
