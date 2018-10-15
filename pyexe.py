@@ -389,6 +389,11 @@ if RunFile:
     run_file(RunFile, RunFileArgv, SkipFirstLine, globenv)
 elif RunModule:
     import runpy
+    if RunModule == 'pip':
+        import pip._vendor.distlib.resources
+        pip._vendor.distlib.resources.register_finder(
+            pip._vendor.distlib.__loader__,
+            pip._vendor.distlib.resources.ResourceFinder)
     sys.argv[:] = RunModuleArgv
     runpy.run_module(RunModule, run_name='__main__')
 elif RunCommand is not None:
