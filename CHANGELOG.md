@@ -11,6 +11,7 @@
 
 - Updated to PyInstaller 3.4.
 - Added support for Python 3.7.
+- Added better support for pip so that the requests library can be installed.
 
 ## Version 14
 

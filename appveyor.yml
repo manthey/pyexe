@@ -82,7 +82,7 @@ build_script:
   - del /S /Q %PYTHON%\*.pyo >NUL
   # Save the artifact immediately
   - appveyor PushArtifact pyexe.py
-  - "python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --icon %PYTHON%\\pythonw.exe --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli-32.exe;setuptools --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli-64.exe;setuptools --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli.exe;setuptools --add-binary \"%PYTHON%\\Lib\\site-packages\\setuptools\\command\\launcher manifest.xml;setuptools\\command\""
+  - "python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --runtime-hook hooks\\rth_pip.py --icon %PYTHON%\\pythonw.exe --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli-32.exe;setuptools --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli-64.exe;setuptools --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli.exe;setuptools --add-binary \"%PYTHON%\\Lib\\site-packages\\setuptools\\command\\launcher manifest.xml;setuptools\\command\""
   - cp dist\pyexe.exe %OUTPUT%
   # Save the artifact immediately
   - appveyor PushArtifact %OUTPUT%

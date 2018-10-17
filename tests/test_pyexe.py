@@ -204,6 +204,17 @@ print(result)
     assert 'sin(x)' in out
 
 
+def testRequestsPip(exepath):
+    out, err = runPyExe(exepath, [
+        '-m', 'pip', 'install', '--no-cache-dir', '--target', '.',
+        '--upgrade', 'requests'])
+    assert 'Successfully installed' in out and 'requests' in out
+    out, err = runPyExe(exepath, input="""import requests
+print(requests.get.__doc__)
+""")
+    assert 'Sends a GET request' in out
+
+
 def testFromStdin(exepath):
     noblanks = """# No blank lines
 def add(a, b):
