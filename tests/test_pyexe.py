@@ -546,3 +546,9 @@ def testImportFromExePath(exepath):
             os.removedirs(sitepath)
         except Exception:
             pass
+
+
+def testSubprocesNonPython(exepath):
+    out, err = runPyExe(exepath, [
+        '-c', 'import subprocess;subprocess.call(["nslookup.exe", "github.com"])'])
+    assert 'Addresses' in out

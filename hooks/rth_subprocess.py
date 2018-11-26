@@ -36,7 +36,7 @@ class _pyexePopen(subprocess.Popen):
         origname = None
         if (not isinstance(args, six.string_types) and len(args) >= 1 and
                 getattr(sys, '_MEIPASS', None)):
-            exename = origname = args[0]
+            exename = args[0]
             exelower = exename.lower()
             if exelower.endswith('.exe'):
                 exelower = exelower.rsplit('.', 1)[0]
@@ -50,7 +50,8 @@ class _pyexePopen(subprocess.Popen):
                 else:
                     inenv = os.getenv('_MEIPASS2', None)
                     os.putenv('_MEIPASS2', sys._MEIPASS)
-            args[0] = sys.executable
+                origname = exename
+                args[0] = sys.executable
         yield
         if origname:
             args[0] = origname
