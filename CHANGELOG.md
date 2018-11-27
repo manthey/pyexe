@@ -1,5 +1,11 @@
 # Release Notes
 
+## Unreleased
+
+### Bug Fixes
+
+- Subprocess would always redirect to python.
+
 ## Version 15
 
 ### Package Versions
