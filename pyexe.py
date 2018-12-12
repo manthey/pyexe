@@ -51,6 +51,14 @@ def get_env_flag(currentValue, key):
     return max(currentValue, value)
 
 
+def get_nondaemon_thread():
+    import threading
+
+    for thread in threading.enumerate():
+        if thread != threading.current_thread() and not thread.daemon:
+            return thread
+
+
 def print_version(details=1):
     """
     Print the current version.
@@ -110,6 +118,10 @@ def run_file(runFile, runFileArgv, skipFirstLine, globenv):
     globs['__name__'] = '__main__'
     globs['__file__'] = runFile
     exec_(src, globs)
+    thread = get_nondaemon_thread()
+    while thread:
+        thread.join()
+        thread = get_nondaemon_thread()
     globs.clear()
     globs.update(originalGlobals)
 
