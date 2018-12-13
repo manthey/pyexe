@@ -130,7 +130,7 @@ the module list is written to stdout.""")
         head = b'    # IMPORT ALL MODULES'
         tail = b'    # END IMPORT ALL MODULES'
         data = open(pyexePath, 'rb').read()
-        imports = ('\n    import '.join([''] + modules) + '\n').encode('utf8')
+        imports = ('\n        import '.join([''] + modules) + '\n').encode('utf8')
         data = data.split(head, 1)[0] + head + imports + tail + data.split(tail, 1)[1]
         open(pyexePath, 'wb').write(data)
     else:

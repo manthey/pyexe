@@ -552,3 +552,24 @@ def testSubprocesNonPython(exepath):
     out, err = runPyExe(exepath, [
         '-c', 'import subprocess;subprocess.call(["nslookup.exe", "github.com"])'])
     assert 'Addresses' in out
+
+
+def testThreadGlobals(exepath):
+    out, err = runPyExe(exepath, ['sample_thread_globals.py'])
+    assert 'Global Variable' in out
+
+
+def testThreadGlobalsInput(exepath):
+    code = """# Thread function with globals
+import threading
+import time
+
+def threaded_func():
+    time.sleep(1)
+    print(globalVar)
+
+globalVar = "Global Variable"
+threading.Thread(target=threaded_func).start()
+"""
+    out, err = runPyExe(exepath, input=code)
+    assert 'Global Variable' in out

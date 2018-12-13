@@ -1,5 +1,11 @@
 # Release Notes
 
+## Unreleased
+
+### Bug Fixes
+
+- Join non-daemon threads on exit.
+
 ## Version 16
 
 ### Package Versions
