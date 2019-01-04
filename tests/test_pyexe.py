@@ -573,3 +573,32 @@ threading.Thread(target=threaded_func).start()
 """
     out, err = runPyExe(exepath, input=code)
     assert 'Global Variable' in out
+
+
+def testSourceWithEncoding(exepath, pyversion):
+    import codecs
+    helloworld = u'\u4f60\u597d\uff0c\u4e16\u754c'
+    code = u"""import codecs
+import sys
+
+sys.stdout = codecs.getwriter("utf-8")(
+    sys.stdout if sys.version_info[0] < 3 else sys.stdout.detach())
+# %s
+print(%r)\n""" % (helloworld, helloworld)
+    for enc, header in (
+            ('utf-8', b''),
+            ('utf-8-bom', codecs.BOM_UTF8),
+            ('cp950', b''),
+            ('gbk', b''),
+            # Note that python source code cannot be in utf-16 or utf-32
+            ):
+        path = 'sample_encoding_%s.py' % enc
+        if enc.endswith('-bom'):
+            enc = enc[:-4]
+        data = header
+        if not header and (enc != 'utf-8' or pyversion < (3, )):
+            data += ('# encoding: %s\n' % enc.rstrip('ble')).encode(enc)
+        data += code.encode(enc)
+        open(path, 'wb').write(data)
+        out, err = runPyExe(exepath, [path])
+        assert helloworld in out.decode('utf-8')

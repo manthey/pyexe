@@ -16,7 +16,7 @@ ExcludeModules = [
     'PyInstaller', 'pefile', 'macholib', 'dis3', 'future', 'altgraph',
     'ordlookup', 'peutils', 'libfuturize', 'libpasteurize', 'past',
     # test
-    "test", "tests",
+    'test', 'tests', 'asyncio.test_utils',
     # Pointless modules
     'antigravity', 'this', 'lib2to3.__main__', 'unittest.__main__',
     # Modules in appveyor that shouldn't be included, plus tkinter

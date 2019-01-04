@@ -1,5 +1,11 @@
 # Release Notes
 
+## Unreleased
+
+### Bug Fixes
+
+- Open files that specify encoding.
+
 ## Version 17
 
 ### Package Versions
