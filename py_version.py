@@ -2,5 +2,5 @@
 
 import sys
 
-Version = sys.version.split()[0] + '.17'
+Version = sys.version.split()[0] + '.18'
 Description = 'Stand-Alone Python Interpreter'
