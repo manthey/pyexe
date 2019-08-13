@@ -78,6 +78,8 @@ build_script:
   # Patch the PyInstaller building\utils.py to avoid storing project path
   # names.
   - "pushd %PYTHON%\\Lib\\site-packages\\PyInstaller\\building && python -m patch %PROJDIR%\\hooks\\utils.py.diff && popd"
+  # Patch the PyInstall loader\pyiboot01_bootstrap.py to keep ctypes' patches a scope other than global
+  - "pushd %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader && python -m patch %PROJDIR%\\hooks\\pyiboot01_bootstrap.py.diff && popd"
   - del /S /Q %PYTHON%\*.pyc >NUL
   - del /S /Q %PYTHON%\*.pyo >NUL
   # Save the artifact immediately
