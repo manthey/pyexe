@@ -1,6 +1,6 @@
 --- pyiboot01_bootstrap.py	2019-08-12 17:37:25.460219000 +1000
 +++ pyiboot01_bootstrap.py	2019-08-13 18:10:32.084968800 +1000
-@@ -123,11 +123,11 @@
+@@ -123,11 +123,12 @@
  if sys.warnoptions:
      import warnings
  
@@ -8,6 +8,7 @@
 +def _setup_ctypes():
      import ctypes
      import os
++     import sys
      from ctypes import LibraryLoader, DEFAULT_MODE
 -
 +    
