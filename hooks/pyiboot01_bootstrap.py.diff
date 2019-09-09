@@ -8,7 +8,7 @@
 +def _setup_ctypes():
      import ctypes
      import os
-+     import sys
++    import sys
      from ctypes import LibraryLoader, DEFAULT_MODE
 -
 +    
