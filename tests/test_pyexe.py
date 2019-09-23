@@ -6,7 +6,7 @@ import time
 
 @pytest.fixture
 def exepath(request):
-    return request.config.getoption("--exe")
+    return request.config.getoption('--exe')
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def pyversion(exepath):
     return tuple(int(part) for part in version.split('.'))
 
 
-def runPyExe(exepath, options=[], input=None, env={}):
+def runPyExe(exepath, options=None, input=None, env=None):
     """
     Run the specified exe with command line options, an option input to stdin,
     and with a modified environment.
@@ -28,6 +28,10 @@ def runPyExe(exepath, options=[], input=None, env={}):
     Exit:  out: stdout from the process.
            err: stderr from the process.
     """
+    if options is None:
+        options = []
+    if env is None:
+        env = {}
     cmd = [exepath] + options
     cmdenv = os.environ.copy()
     cmdenv.update(env)
@@ -43,7 +47,7 @@ def runPyExe(exepath, options=[], input=None, env={}):
     return out, err
 
 
-def runPyExeLines(exepath, options=[], input=None, env={}):
+def runPyExeLines(exepath, options=None, input=None, env=None):
     """
     Run the specified exe with command line options, an option input to stdin,
     and with a modified environment.  Return line-by-line results with
@@ -56,6 +60,11 @@ def runPyExeLines(exepath, options=[], input=None, env={}):
     Exit:  out: a list of (time, string) values from stdout.
            err: a list of (time, string) values from stderr.
     """
+    if options is None:
+        options = []
+    if env is None:
+        env = {}
+
     def readerthread(fh, buffer):
         buffer.append([])
         while True:
@@ -551,7 +560,7 @@ def testImportFromExePath(exepath):
 def testSubprocesNonPython(exepath):
     out, err = runPyExe(exepath, [
         '-c', 'import subprocess;subprocess.call(["nslookup.exe", "github.com"])'])
-    assert 'Addresses' in out
+    assert 'Address' in out
 
 
 def testThreadGlobals(exepath):
