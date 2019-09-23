@@ -611,3 +611,12 @@ print(%r)\n""" % (helloworld, helloworld)
         open(path, 'wb').write(data)
         out, err = runPyExe(exepath, [path])
         assert helloworld in out.decode('utf-8')
+
+
+def testImportPlatform(exepath):
+    code = """# Import platform
+import platform
+print(platform.system())
+"""
+    out, err = runPyExe(exepath, input=code)
+    assert 'Windows' in out
