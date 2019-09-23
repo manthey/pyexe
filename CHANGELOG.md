@@ -1,5 +1,12 @@
 # Release Notes
 
+## Unreleased
+
+### Package Versions
+
+- Python 2.7.16, 3.5.4, 3.6.8, 3.7.4
+- pywin32 225, pip 19.2.3, psutil 5.6.3, setuptools 41.2.0, six 1.12.0
+
 ## Version 18
 
 ### Package Versions
