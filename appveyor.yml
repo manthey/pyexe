@@ -1,5 +1,13 @@
 environment:
   matrix:
+    - PYTHON: "C:\\Python38"
+      INSTALL_OPTIONS: 3.8 --min=0
+      OUTPUT: "py38.exe"
+      ALTPYTHON: "C:\\Python36-x64"
+    - PYTHON: "C:\\Python38-x64"
+      INSTALL_OPTIONS: 3.8 --min=0 --64
+      OUTPUT: "py38-64.exe"
+      ALTPYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python37"
       INSTALL_OPTIONS: 3.7 --min=4
       OUTPUT: "py37.exe"
@@ -46,6 +54,15 @@ init:
   - ver
 
 build_script:
+  - ps: |
+      if (-not (Test-Path $env:PYTHON)) {
+        if ($env:PYTHON -eq "C:\\Python38") {
+          iex "choco install python3 --version=3.8 --no-progress --params /InstallDir:$Env:PYTHON --x86"
+        }
+        if ($env:PYTHON -eq "C:\\Python38-x64") {
+          iex "choco install python3 --version=3.8 --no-progress --params /InstallDir:$Env:PYTHON"
+        }
+      }
   # Upgrade the appveyor python version
   - "SET PATH=%ALTPYTHON%;%ALTPYTHON%\\Scripts;%ORIGPATH%"
   - python -m pip install --upgrade requests
