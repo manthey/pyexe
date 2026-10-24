@@ -79,6 +79,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & '${{ env.TARGETDIR }}\${{ matrix.bin }}' --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Diagnostics: verify that the bootstrap python from
+          # actions/setup-python still resolves after running the python.org
+          # installer, which may have modified installed pythons.
+          Write-Host "##[group]Bootstrap python diagnostics"
+          Write-Host "pythonLocation: $env:pythonLocation"
+          Write-Host "bootstrap python.exe exists: $(Test-Path "$env:pythonLocation\python.exe")"
+          Get-Command python -All -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "python resolves to: $($_.Source)" }
+          Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WindowsApps" -Filter 'python*' |
+            ForEach-Object { Write-Host "WindowsApps alias: $($_.Name)" }
+          Write-Host "##[endgroup]"
 
       - name: Build the stand-alone executable
         env:
@@ -117,20 +128,41 @@ jobs:
         env:
           PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
         run: |
+          # Diagnostics: report how python resolves in this step.  The stub
+          # error "Python was not found; run without arguments to install
+          # from the Microsoft Store ..." indicates that bare 'python' is
+          # resolving to the WindowsApps alias instead of the bootstrap
+          # python installed by actions/setup-python.
+          Write-Host "##[group]Python resolution diagnostics"
+          Write-Host "PATH: $env:PATH"
+          Write-Host "pythonLocation: $env:pythonLocation"
+          Write-Host "bootstrap python.exe exists: $(Test-Path "$env:pythonLocation\python.exe")"
+          Get-Command python -All -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "python resolves to: $($_.Source)" }
+          Write-Host "##[endgroup]"
+          # Use the bootstrap python explicitly for these commands.  On
+          # AppVeyor, the zipapp was built with an explicit python and the
+          # tests ran after resetting PATH, because installing the target
+          # python can disturb the resolution of bare 'python'.
+          $bootstrap = "$env:pythonLocation\python.exe"
+          if (-not (Test-Path $bootstrap)) {
+            Write-Host "##[error]Bootstrap python not found at $bootstrap"
+            exit 1
+          }
           New-Item -ItemType Directory -Force -Path C:\temp | Out-Null
           Set-Location tests
           # Build a zipapp for our tests.
-          python -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
+          & $bootstrap -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Make sure we only have original files here.
           git clean -fxd .
-          python -m pytest -l --cache-clear --exe="..\${{ matrix.output }}"
+          & $bootstrap -m pytest -l --cache-clear --exe="..\${{ matrix.output }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # We can test the tests against the master python.  We have to
           # exclude a few tests that only work on the stand-alone build.
           # Make sure we only have original files here.
           git clean -fxd .
-          python -m pytest -l --cache-clear --exe="$env:PYBIN" -m "not pyexe"
+          & $bootstrap -m pytest -l --cache-clear --exe="$env:PYBIN" -m "not pyexe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload the executable
