@@ -23,6 +23,12 @@ def haspywin32(exepath):
     return 'ModuleNotFoundError' not in (out + err)
 
 
+@pytest.fixture
+def haspsutil(exepath):
+    out, err = runPyExe(exepath, ['-c', 'import psutil'])
+    return 'ModuleNotFoundError' not in (out + err)
+
+
 def runPyExe(exepath, options=None, input=None, env=None):
     """
     Run the specified exe with command line options, an option input to stdin,
@@ -111,18 +117,20 @@ def clearPyc(basename):
 
 
 @pytest.mark.pyexe
-def testVersion(exepath, haspywin32):
+def testVersion(exepath, haspywin32, haspsutil):
     out, err = runPyExe(exepath, ['--version'])
     assert out.startswith('Stand-Alone Python Interpreter')
     out, err = runPyExe(exepath, ['-V'])
     assert out.startswith('Stand-Alone Python Interpreter')
     assert 'psutil' not in out
     out, err = runPyExe(exepath, ['-V', '-V'])
-    assert 'psutil' in out
+    if haspsutil:
+        assert 'psutil' in out
     if haspywin32:
         assert 'pywin32' in out
     out, err = runPyExe(exepath, ['-VV'])
-    assert 'psutil' in out
+    if haspsutil:
+        assert 'psutil' in out
     if haspywin32:
         assert 'pywin32' in out
 
@@ -135,9 +143,11 @@ def testHelp(exepath):
 
 
 @pytest.mark.pyexe
-def testAllFlag(exepath):
+def testAllFlag(exepath, haspsutil):
     out, err = runPyExe(exepath, ['--all', '-c', 'import sys;print(sorted(sys.modules.keys()))'])
-    assert 'psutil' in out and 'multiprocessing' in out
+    if haspsutil:
+        assert 'psutil' in out
+    assert 'multiprocessing' in out
 
 
 def testDirectCommand(exepath):
@@ -151,7 +161,10 @@ def testDirectCommandImport(exepath):
     assert out.startswith('{"test": "value"}')
 
 
-def testImportPsutil(exepath):
+def testImportPsutil(exepath, haspsutil):
+    if not haspsutil:
+        import pytest
+        pytest.skip('psutil is not bundled (free-threaded builds)')
     out, err = runPyExe(exepath, [
         '-c', """import psutil;print(repr(psutil.cpu_times()))"""])
     assert 'scputimes' in out
@@ -543,7 +556,10 @@ def testPythonCaseOK(exepath, pyversion):
 
 
 @pytest.mark.pyexe
-def testBuildPathNotInTracebacks(exepath):
+def testBuildPathNotInTracebacks(exepath, haspsutil):
+    if not haspsutil:
+        import pytest
+        pytest.skip('psutil is not bundled (free-threaded builds)')
     out, err = runPyExe(exepath, [
         '-c', """import psutil;psutil.net_connections('foo')"""])
     # With PyInstaller 6, module paths in tracebacks are shown relative to

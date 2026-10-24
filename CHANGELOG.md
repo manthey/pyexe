@@ -26,6 +26,8 @@
 - `install_python.py` supports installing free-threaded builds by appending a
   't' to the version, such as `3.14t`, using the installer's
   `Include_freethreaded` option.
+- Free-threaded builds do not bundle psutil; the psutil tests are skipped for
+  those builds.
 - On Python 3.11+, `-O` and `-OO` are emulated by patching the import system
   (the legacy `Py_OptimizeFlag` global is no longer consulted after start),
   and `PYTHONCASEOK` is applied by patching the import system's `_relax_case`.
