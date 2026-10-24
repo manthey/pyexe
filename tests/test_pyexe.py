@@ -29,6 +29,12 @@ def haspsutil(exepath):
     return 'ModuleNotFoundError' not in (out + err)
 
 
+@pytest.fixture
+def ispyexe(exepath):
+    out, err = runPyExe(exepath, ['--version'])
+    return 'Stand-Alone Python' in (out + err)
+
+
 def runPyExe(exepath, options=None, input=None, env=None):
     """
     Run the specified exe with command line options, an option input to stdin,
@@ -529,7 +535,7 @@ with zipfile.ZipFile(buf, 'a') as z:
     assert 'Duplicate name: \'name\'' in err and 'Traceback' not in err
 
 
-def testPythonCaseOK(exepath, pyversion):
+def testPythonCaseOK(exepath, pyversion, ispyexe):
     # For these tests, we don't write bytecode files, as that can cache the
     # results.
     out, err = runPyExe(exepath, ['-B', '-c', 'import sample_case'])
@@ -542,11 +548,18 @@ def testPythonCaseOK(exepath, pyversion):
                         env={'PYTHONCASEOK': 'true'})
     assert 'mixed CASE' in out
     assert 'No module named' not in err
-    # Python 3.x does not honor the -E flag with regards to PYTHONCASEOK
+    # Python 3.x did not honor the -E flag with regards to PYTHONCASEOK, but
+    # Python 3.11 changed this, so -E now ignores PYTHONCASEOK.  The
+    # stand-alone executable restores the earlier behavior, so it honors
+    # PYTHONCASEOK with -E regardless of the version.
     out, err = runPyExe(exepath, ['-B', '-E', '-c', 'import sample_case'],
                         env={'PYTHONCASEOK': 'true'})
-    assert 'mixed CASE' in out
-    assert 'No module named' not in err
+    if ispyexe or pyversion < (3, 11):
+        assert 'mixed CASE' in out
+        assert 'No module named' not in err
+    else:
+        assert 'mixed CASE' not in out
+        assert 'No module named' in err
     # But Python 3.6 -I is honored
     if pyversion >= (3, 6):
         out, err = runPyExe(exepath, ['-B', '-I', '-c', 'import sample_case'],
