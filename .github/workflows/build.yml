@@ -70,7 +70,7 @@ jobs:
 
       - name: Install build prerequisites
         run: |
-          python -m pip install --upgrade requests pytest
+          python -m pip install --upgrade requests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Install the target python
@@ -140,29 +140,34 @@ jobs:
           Get-Command python -All -ErrorAction SilentlyContinue |
             ForEach-Object { Write-Host "python resolves to: $($_.Source)" }
           Write-Host "##[endgroup]"
-          # Use the bootstrap python explicitly for these commands.  On
-          # AppVeyor, the zipapp was built with an explicit python and the
-          # tests ran after resetting PATH, because installing the target
-          # python can disturb the resolution of bare 'python'.
-          $bootstrap = "$env:pythonLocation\python.exe"
-          if (-not (Test-Path $bootstrap)) {
-            Write-Host "##[error]Bootstrap python not found at $bootstrap"
-            exit 1
-          }
+          # Use the target python for these commands.  The bootstrap python
+          # installed by actions/setup-python cannot be used here: for the
+          # matrix entries matching its version, the python.org installer
+          # run by install_python.py treats the registered toolcache python
+          # as the same product and relocates it to the target directory,
+          # so bare 'python' resolves to the WindowsApps alias afterwards.
+          # This mirrors the AppVeyor test script, which used explicit
+          # pythons for the zipapp and pytest commands.
           New-Item -ItemType Directory -Force -Path C:\temp | Out-Null
           Set-Location tests
+          # Install pytest into the target python; it runs the tests both
+          # against the stand-alone executable and against the master
+          # python.  It is installed after the executable was built so that
+          # pytest is not picked up by modules_pyexe.py and bundled.
+          & "$env:PYBIN" -m pip install pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Build a zipapp for our tests.
-          & $bootstrap -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
+          & "$env:PYBIN" -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Make sure we only have original files here.
           git clean -fxd .
-          & $bootstrap -m pytest -l --cache-clear --exe="..\${{ matrix.output }}"
+          & "$env:PYBIN" -m pytest -l --cache-clear --exe="..\${{ matrix.output }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # We can test the tests against the master python.  We have to
           # exclude a few tests that only work on the stand-alone build.
           # Make sure we only have original files here.
           git clean -fxd .
-          & $bootstrap -m pytest -l --cache-clear --exe="$env:PYBIN" -m "not pyexe"
+          & "$env:PYBIN" -m pytest -l --cache-clear --exe="$env:PYBIN" -m "not pyexe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload the executable
