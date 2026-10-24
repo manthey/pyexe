@@ -352,9 +352,15 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
         _orig_source_file_loader = _be.SourceFileLoader
 
         class _OptimizedSourceLoader(_orig_source_file_loader):
-            def source_to_code(self, data, path, *, _optimize=-1):
+            def source_to_code(self, data, path, fullname=None, *,
+                               _optimize=-1):
+                if fullname is None:
+                    # Python 3.14 and earlier do not accept the fullname
+                    # argument.
+                    return _orig_source_file_loader.source_to_code(
+                        self, data, path, _optimize=Optimize)
                 return _orig_source_file_loader.source_to_code(
-                    self, data, path, _optimize=Optimize)
+                    self, data, path, fullname, _optimize=Optimize)
 
         _orig_cache_from_source = _be.cache_from_source
 
