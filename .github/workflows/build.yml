@@ -98,9 +98,9 @@ jobs:
           $pybin = $env:PYBIN
           Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
             Remove-Item -Force
-          & $pybin -m pip install --upgrade pip
+          & $pybin -m pip install --no-warn-script-location --upgrade pip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $pybin -m pip install --upgrade ${{ matrix.packages }} setuptools
+          & $pybin -m pip install --no-warn-script-location --upgrade ${{ matrix.packages }} setuptools
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Generate the list of modules we need to import
           Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
@@ -108,7 +108,7 @@ jobs:
           & $pybin modules_pyexe.py pyexe.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Install PyInstaller
-          & $pybin -m pip install pyinstaller==6.22.3
+          & $pybin -m pip install --no-warn-script-location pyinstaller==6.22.3
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Copy a build hook to PyInstaller to include the cacerts.pem file
           # for pip.
@@ -154,7 +154,7 @@ jobs:
           # against the stand-alone executable and against the master
           # python.  It is installed after the executable was built so that
           # pytest is not picked up by modules_pyexe.py and bundled.
-          & "$env:PYBIN" -m pip install pytest
+          & "$env:PYBIN" -m pip install --no-warn-script-location pytest
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Build a zipapp for our tests.
           & "$env:PYBIN" -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp

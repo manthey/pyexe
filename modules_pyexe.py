@@ -98,9 +98,9 @@ def list_modules():
     # Remove modules starting with values in ExcludeModules or containing a
     # module component in ExcludeParts
     regex = re.compile(
-        '(^(' + '|'.join([re.escape(val) for val in ExcludeModules]) +
-        ')|\.(' + '|'.join([re.escape(val) for val in ExcludeParts]) +
-        '))(\.|$)')
+        r'(^(' + '|'.join([re.escape(val) for val in ExcludeModules]) +
+        r')|\.(' + '|'.join([re.escape(val) for val in ExcludeParts]) +
+        r'))(\.|$)')
     modules = [item for item in modules if not regex.search(item)]
     modules.sort()
 
