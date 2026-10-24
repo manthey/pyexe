@@ -31,6 +31,9 @@ ExcludeModules = [
     'pywin.framework.interact', 'pywin.framework.intpyapp',
     'pywin.framework.startup', 'pywin.framework.stdin',
     'pywin.framework.winout', 'pywin.scintilla', 'pywin.tools.TraceCollector',
+    # Importing start_pythonwin launches the Pythonwin GUI application, which
+    # blocks forever while waiting for the message loop.
+    'start_pythonwin',
     'win32com.axdebug.debugger', 'win32com.axdebug.dump',
     'win32com.axscript.client.debug',
 ]

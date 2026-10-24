@@ -28,6 +28,9 @@
   `Include_freethreaded` option.
 - Free-threaded builds do not bundle psutil; the psutil tests are skipped for
   those builds.
+- Exclude the pywin32 `start_pythonwin` module from the generated module list;
+  importing it starts the Pythonwin GUI application, which blocked the module
+  list generation indefinitely.
 - On Python 3.11+, `-O` and `-OO` are emulated by patching the import system
   (the legacy `Py_OptimizeFlag` global is no longer consulted after start),
   and `PYTHONCASEOK` is applied by patching the import system's `_relax_case`.
