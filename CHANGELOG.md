@@ -10,6 +10,8 @@
 - Port to PyInstaller 6, and register the frozen importers with pip's vendored
   distlib resource finder so pip works in the stand-alone executable.
 
+- Port the continuous integration from AppVeyor to GitHub Actions.
+
 ### Changes
 
 - Drop Python 2 support and the bundled `six` module.

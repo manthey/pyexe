@@ -1,0 +1,196 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags: ['*']
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+env:
+  TARGETDIR: 'C:\pyexe_target'
+
+jobs:
+  build:
+    name: ${{ matrix.output }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - py: '3.11'
+            install-options: '3.11 --min=0'
+            bin: 'python.exe'
+            output: 'py311.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.11'
+            install-options: '3.11 --min=0 --64'
+            bin: 'python.exe'
+            output: 'py311-64.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.12'
+            install-options: '3.12 --min=0'
+            bin: 'python.exe'
+            output: 'py312.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.12'
+            install-options: '3.12 --min=0 --64'
+            bin: 'python.exe'
+            output: 'py312-64.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.13'
+            install-options: '3.13 --min=0'
+            bin: 'python.exe'
+            output: 'py313.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.13'
+            install-options: '3.13 --min=0 --64'
+            bin: 'python.exe'
+            output: 'py313-64.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.14'
+            install-options: '3.14 --min=0'
+            bin: 'python.exe'
+            output: 'py314.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.14'
+            install-options: '3.14 --min=0 --64'
+            bin: 'python.exe'
+            output: 'py314-64.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.14t'
+            install-options: '3.14t --min=0 --64'
+            bin: 'python3.14t.exe'
+            output: 'py314t-64.exe'
+            packages: 'psutil'
+          - py: '3.15'
+            install-options: '3.15 --min=0'
+            bin: 'python.exe'
+            output: 'py315.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.15'
+            install-options: '3.15 --min=0 --64'
+            bin: 'python.exe'
+            output: 'py315-64.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.15t'
+            install-options: '3.15t --min=0 --64'
+            bin: 'python3.15t.exe'
+            output: 'py315t-64.exe'
+            packages: 'psutil'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up bootstrap python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build prerequisites
+        run: |
+          python -m pip install --upgrade requests pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install the target python
+        run: |
+          python install_python.py ${{ matrix.install-options }} --out=${{ env.TARGETDIR }} --force
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & '${{ env.TARGETDIR }}\${{ matrix.bin }}' --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build the stand-alone executable
+        env:
+          PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
+        run: |
+          $pybin = $env:PYBIN
+          Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
+            Remove-Item -Force
+          & $pybin -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $pybin -m pip install --upgrade ${{ matrix.packages }} setuptools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Generate the list of modules we need to import
+          Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
+            Remove-Item -Force
+          & $pybin modules_pyexe.py pyexe.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Install PyInstaller
+          & $pybin -m pip install pyinstaller==6.22.3
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Copy a build hook to PyInstaller to include the cacerts.pem file
+          # for pip.
+          Copy-Item hooks\hook-pip.py "$env:TARGETDIR\Lib\site-packages\PyInstaller\hooks\"
+          Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
+            Remove-Item -Force
+          & $pybin -m PyInstaller --onefile pyexe.py --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\rth_subprocess.py --runtime-hook hooks\rth_pip.py --runtime-hook hooks\pyi_rth_multiprocessing.py --icon "$env:TARGETDIR\pythonw.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item dist\pyexe.exe ${{ matrix.output }}
+
+      - name: Report version
+        run: |
+          & '.\${{ matrix.output }}' -VV
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test the stand-alone executable
+        env:
+          PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\temp | Out-Null
+          Set-Location tests
+          # Build a zipapp for our tests.
+          python -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Make sure we only have original files here.
+          git clean -fxd .
+          python -m pytest -l --cache-clear --exe="..\${{ matrix.output }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # We can test the tests against the master python.  We have to
+          # exclude a few tests that only work on the stand-alone build.
+          # Make sure we only have original files here.
+          git clean -fxd .
+          python -m pytest -l --cache-clear --exe="$env:PYBIN" -m "not pyexe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload the executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: |
+            pyexe.py
+            ${{ matrix.output }}
+
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all built executables
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: artifacts
+
+      - name: Update the pyexe-latest release
+        if: github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view pyexe-latest --repo "$GITHUB_REPOSITORY" || \
+            gh release create pyexe-latest --repo "$GITHUB_REPOSITORY" \
+            --title "Release pyexe-latest" \
+            --notes "The most recent stand-alone Python executables."
+          gh release upload pyexe-latest artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Create the tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" artifacts/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Release $GITHUB_REF_NAME" \
+            --notes "Stand-alone Python executables for $GITHUB_REF_NAME."

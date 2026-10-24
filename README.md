@@ -1,6 +1,6 @@
 # pyexe.exe
 
-[![Build status](https://ci.appveyor.com/api/projects/status/n18f0997k18x87lw/branch/master?svg=true)](https://ci.appveyor.com/project/manthey/pyexe/branch/master)
+[![Build status](https://github.com/manthey/pyexe/actions/workflows/build.yml/badge.svg)](https://github.com/manthey/pyexe/actions/workflows/build.yml)
 
 Here is a stand-alone version of python that is a single Windows executable.
 
@@ -9,7 +9,8 @@ each in 32-bit and 64-bit versions, plus 64-bit free-threaded builds for 3.14t
 and 3.15t), pywin32, psutil, pip, setuptools, and includes all packages that
 can be included without additional dlls, excepting tkinter.
 
-See the appveyor script for build instructions.
+See the GitHub Actions workflow (.github/workflows/build.yml) for build
+instructions.
 
 ## Installing other modules
 
