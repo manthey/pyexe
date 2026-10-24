@@ -150,6 +150,24 @@ jobs:
               ForEach-Object { $matches[1] })
             if (-not $failed) {
               Write-Host 'All of the bundled modules import successfully.'
+              # Save a per-version copy of the module list report, and add a
+              # bundle report to the job summary.
+              $version = '${{ matrix.output }}' -replace '\.exe$', ''
+              Copy-Item modules_pyexe_report.txt "module-list-$version.txt" -Force
+              if ($env:GITHUB_STEP_SUMMARY) {
+                $adjusted = if ($excludes) { $excludes -replace '^--exclude=', '' } else { 'none' }
+                Add-Content $env:GITHUB_STEP_SUMMARY "## Bundle report: ${{ matrix.output }}"
+                Add-Content $env:GITHUB_STEP_SUMMARY ''
+                Add-Content $env:GITHUB_STEP_SUMMARY "Excluded packages after testing the imports: $adjusted"
+                Add-Content $env:GITHUB_STEP_SUMMARY ''
+                Add-Content $env:GITHUB_STEP_SUMMARY '<details><summary>Module list report</summary>'
+                Add-Content $env:GITHUB_STEP_SUMMARY ''
+                Add-Content $env:GITHUB_STEP_SUMMARY '```'
+                Get-Content modules_pyexe_report.txt | Add-Content $env:GITHUB_STEP_SUMMARY
+                Add-Content $env:GITHUB_STEP_SUMMARY '```'
+                Add-Content $env:GITHUB_STEP_SUMMARY ''
+                Add-Content $env:GITHUB_STEP_SUMMARY '</details>'
+              }
               break
             }
             # Exclude the top level package of each module that failed.
@@ -170,6 +188,13 @@ jobs:
               exit 1
             }
           }
+
+      - name: Upload the module list report
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-list-${{ matrix.output }}
+          path: module-list-*.txt
+          if-no-files-found: error
 
       - name: Report version
         run: |
@@ -238,6 +263,7 @@ jobs:
       - name: Download all built executables
         uses: actions/download-artifact@v4
         with:
+          pattern: 'py*'
           merge-multiple: true
           path: artifacts
 

@@ -33,6 +33,11 @@
   from the module list and the executable is rebuilt, so packages that cannot
   work in the stand-alone executable are not bundled.  The packages installed
   for the build are resolved per python version.
+- The module list generation writes a report of the bundled modules, the
+  modules excluded for failing to import (with the exceptions), the modules
+  excluded by the static exclusion lists, and any stale exclusion entries.
+  The build job adds the report to the run summary and uploads it as an
+  artifact for each executable.
 - Exclude the pywin32 `start_pythonwin` module from the generated module list;
   importing it starts the Pythonwin GUI application, which blocked the module
   list generation indefinitely.
