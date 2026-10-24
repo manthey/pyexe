@@ -549,12 +549,12 @@ def testPythonCaseOK(exepath, pyversion, ispyexe):
     assert 'mixed CASE' in out
     assert 'No module named' not in err
     # Python 3.x did not honor the -E flag with regards to PYTHONCASEOK, but
-    # Python 3.11 changed this, so -E now ignores PYTHONCASEOK.  The
+    # Python 3.9 changed this, so -E now ignores PYTHONCASEOK.  The
     # stand-alone executable restores the earlier behavior, so it honors
     # PYTHONCASEOK with -E regardless of the version.
     out, err = runPyExe(exepath, ['-B', '-E', '-c', 'import sample_case'],
                         env={'PYTHONCASEOK': 'true'})
-    if ispyexe or pyversion < (3, 11):
+    if ispyexe or pyversion < (3, 9):
         assert 'mixed CASE' in out
         assert 'No module named' not in err
     else:

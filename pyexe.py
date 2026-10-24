@@ -333,7 +333,7 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
         # We have to suppress some environment effects
         os.environ.pop('PYTHONCASEOK', None)
     # PYTHONCASEOK is honored by the import system through _relax_case, which
-    # in Python 3.11+ also requires that the interpreter was not started with
+    # in Python 3.9+ also requires that the interpreter was not started with
     # -E or -I (or frozen, since PyInstaller starts the interpreter in isolated
     # mode).  Patch the import system's version to restore the expected
     # behavior in stand-alone mode: -E does not ignore PYTHONCASEOK, but -I
