@@ -29,18 +29,27 @@
 - Free-threaded builds do not bundle psutil; the psutil tests are skipped for
   those builds.
 - The build imports all of the bundled modules in the stand-alone executable,
-  and for each module that fails to import, its top level package is excluded
-  from the module list and the executable is rebuilt, so packages that cannot
-  work in the stand-alone executable are not bundled.  The packages installed
-  for the build are resolved per python version.
+  and each module that fails to import is excluded from the module list and
+  the executable is rebuilt, so modules that cannot work in the stand-alone
+  executable are not bundled, while the modules of the same package that do
+  work are kept.  The packages installed for the build are resolved per
+  python version.
 - The module list generation writes a report of the bundled modules, the
   modules excluded for failing to import (with the exceptions), the modules
   excluded by the static exclusion lists, and any stale exclusion entries.
   The build job adds the report to the run summary and uploads it as an
   artifact for each executable.
-- Exclude the pywin32 `start_pythonwin` module from the generated module list;
-  importing it starts the Pythonwin GUI application, which blocked the module
-  list generation indefinitely.
+- Fewer modules are manually excluded from the module list.  The `venv`
+  module and most of the pywin32 modules that were excluded for historical
+  reasons (the pywin debugger, dialog, editor, framework, scintilla, and
+  tools modules, and adodbapi) are now bundled, since a module that fails
+  to import is excluded automatically.  Only the modules that launch the
+  Pythonwin application (`pywin.framework.startup`,
+  `pywin.framework.intpyapp`, and `start_pythonwin`), which would block
+  forever, and the axdebug modules, which need an unavailable dll, remain
+  excluded.  The repository's `install_python` helper is also excluded from
+  the module list, and the dead `FixTk` and `asyncio.test_utils` exclusion
+  entries were removed.
 - The `--all` import list imports `win32ui` before the other modules, so that
   modules requiring the MFC state it initializes (such as `dde`) can be
   imported, and each module import is individually guarded: a module that

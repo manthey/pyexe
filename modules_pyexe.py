@@ -9,31 +9,27 @@ import sys
 # Modules we know we can't work with or are completely pointless
 ExcludeModules = [
     # our own code
-    'pyexe', 'modules_pyexe', 'modules_pyexe_list',
+    'pyexe', 'modules_pyexe', 'modules_pyexe_list', 'install_python',
     # installers and modules the installers require
     'py2exe',
     'PyInstaller', '_pyinstaller_hooks_contrib', 'pyinstaller_hooks_contrib',
     'pefile', 'macholib', 'altgraph', 'distlib', 'virtualenv',
     'ordlookup', 'peutils',
     # test
-    'test', 'tests', 'asyncio.test_utils',
+    'test', 'tests',
     # Pointless modules
     'antigravity', 'this', 'lib2to3.__main__', 'unittest.__main__',
-    # Modules in appveyor that shouldn't be included, plus tkinter
-    'FixTk', '_tkinter',
-    'adodbapi', 'altgraph', 'tkinter', 'turtle',
+    # Modules that aren't installed, so that they are excluded if they are
+    # ever installed (tkinter is not installed, since it needs tcl/tk dlls)
+    '_tkinter',
+    'tkinter', 'turtle',
     'turtledemo', 'tcl', 'tk',
-    # These cause test importation fail
-    'idlelib', 'win32traceutil', 'venv',
-    # These cause --all flag to fail
-    'pywin.debugger', 'pywin.dialogs.ideoptions',
-    'pywin.framework.dbgcommands', 'pywin.framework.editor',
-    'pywin.framework.interact', 'pywin.framework.intpyapp',
-    'pywin.framework.startup', 'pywin.framework.stdin',
-    'pywin.framework.winout', 'pywin.scintilla', 'pywin.tools.TraceCollector',
-    # Importing start_pythonwin launches the Pythonwin GUI application, which
-    # blocks forever while waiting for the message loop.
-    'start_pythonwin',
+    # These would fail to be imported by the tests
+    'idlelib', 'win32traceutil',
+    # Importing these launches the Pythonwin GUI application, which blocks
+    # forever waiting for the message loop.
+    'pywin.framework.intpyapp', 'pywin.framework.startup', 'start_pythonwin',
+    # The axdebug modules cannot work, since the axdebug dll is not available.
     'win32com.axdebug.debugger', 'win32com.axdebug.dump',
     'win32com.axscript.client.debug',
 ]

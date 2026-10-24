@@ -120,10 +120,9 @@ jobs:
           $pybin = $env:PYBIN
           # Build the executable, then import all of the bundled modules in
           # it.  Each module that fails to import in the stand-alone
-          # executable causes its top level package to be excluded from the
-          # module list, and the executable is rebuilt, until all of the
-          # bundled modules import successfully.  The exclusions accumulate,
-          # so the loop converges.
+          # executable is excluded from the module list, and the executable
+          # is rebuilt, until all of the bundled modules import
+          # successfully.  The exclusions accumulate, so the loop converges.
           $excludes = ''
           foreach ($attempt in 1..3) {
             Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
@@ -158,7 +157,7 @@ jobs:
                 $adjusted = if ($excludes) { $excludes -replace '^--exclude=', '' } else { 'none' }
                 Add-Content $env:GITHUB_STEP_SUMMARY "## Bundle report: ${{ matrix.output }}"
                 Add-Content $env:GITHUB_STEP_SUMMARY ''
-                Add-Content $env:GITHUB_STEP_SUMMARY "Excluded packages after testing the imports: $adjusted"
+                Add-Content $env:GITHUB_STEP_SUMMARY "Excluded modules after testing the imports: $adjusted"
                 Add-Content $env:GITHUB_STEP_SUMMARY ''
                 Add-Content $env:GITHUB_STEP_SUMMARY '<details><summary>Module list report</summary>'
                 Add-Content $env:GITHUB_STEP_SUMMARY ''
@@ -170,17 +169,17 @@ jobs:
               }
               break
             }
-            # Exclude the top level package of each module that failed.
-            $top = @($failed | ForEach-Object { ($_ -split '\.')[0] } |
-              Sort-Object -Unique)
-            foreach ($pkg in $top) {
-              if ($pkg -in @('encodings', 'importlib')) {
-                Write-Host "##[error]$pkg failed to import and cannot be excluded: $($failed -join ', ')"
+            # Exclude each module that failed to import.  Excluding single
+            # modules rather than their top level packages keeps the modules
+            # of the same package that do work.
+            foreach ($module in $failed) {
+              if ($module -in @('encodings', 'importlib')) {
+                Write-Host "##[error]$module failed to import and cannot be excluded: $($failed -join ', ')"
                 exit 1
               }
-              Write-Host "##[warning]Excluding $pkg from the bundle, since $($failed -join ', ') failed to import"
+              Write-Host "##[warning]Excluding $module from the bundle, since it failed to import"
             }
-            $add = $top -join ','
+            $add = ($failed | Sort-Object -Unique) -join ','
             if ($excludes) { $excludes = "$excludes,$add" }
             else { $excludes = "--exclude=$add" }
             if ($attempt -eq 3) {
