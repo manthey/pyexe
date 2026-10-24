@@ -39,6 +39,9 @@
 - On Python 3.11+, `-O` and `-OO` are emulated by patching the import system
   (the legacy `Py_OptimizeFlag` global is no longer consulted after start),
   and `PYTHONCASEOK` is applied by patching the import system's `_relax_case`.
+- `PYTHONCASEOK` is ignored when `-E` or `-I` is given, matching Python 3.9+
+  behavior, rather than preserving the earlier behavior where `-E` did not
+  affect `PYTHONCASEOK`.
 - The `-v` and `-b` flags are accepted but cannot be applied on Python 3.11+,
   since the interpreter no longer consults the legacy flag globals after
   startup.

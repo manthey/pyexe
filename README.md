@@ -35,7 +35,9 @@ Although the stand-alone Python attempts to have the same features as a normally
 - `-v` and `PYTHONVERBOSE` are accepted but cannot be applied in Python 3.11+, since the interpreter no longer consults the legacy `Py_VerboseFlag` global after startup.
 - `-b`, `-bb`, and `PYTHONDONTWRITEBYTECODE`-style bytes warnings (`-b`, `PYTHONWARNINGS` still work) are accepted, but the `BytesWarning` flag cannot be applied in Python 3.11+, since the legacy `Py_BytesWarningFlag` global is no longer consulted after startup.
 - `-O` and `-OO` are emulated: modules imported after start are compiled with the requested optimization level, and bytecode cache files use the matching `opt-N` tag.  Modules already imported at startup are unaffected.
-- `PYTHONCASEOK` is honored, including its Python 3 behavior where `-E` does not ignore it but `-I` does.  It is applied by patching the import system, since PyInstaller starts the interpreter in isolated mode.
+- `PYTHONCASEOK` is honored, and ignored when `-E` or `-I` is given, matching
+  Python 3.9+.  It is applied by patching the import system, since PyInstaller
+  starts the interpreter in isolated mode.
 - `-I` and `-E` are applied to pyexe's own environment handling, but the interpreter itself has already been started in a mode that ignores most environment variables.
 - Not all environment variables are handled, such as: `PYTHONIOENCODING`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`, `PYTHONMALLOC`, `PYTHONDEVMODE`.  Some of these are ignored; some are used and cannot be suppressed with `-E` or `-I`.  Many of these could be handled properly with additional work.
 - `PYTHONSAFEPATH` is honored, and `-P` suppresses the automatic prepending of the script directory or current directory to `sys.path`.

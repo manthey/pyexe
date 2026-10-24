@@ -329,20 +329,17 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
         VerboseFlag = get_env_flag(VerboseFlag, 'PYTHONVERBOSE')
         if os.environ.get('PYTHONWARNINGS'):
             WarningOptions.extend(os.environ.get('PYTHONWARNINGS').split(','))
-    if Isolated:
-        # We have to suppress some environment effects
-        os.environ.pop('PYTHONCASEOK', None)
     # PYTHONCASEOK is honored by the import system through _relax_case, which
-    # in Python 3.9+ also requires that the interpreter was not started with
-    # -E or -I (or frozen, since PyInstaller starts the interpreter in isolated
-    # mode).  Patch the import system's version to restore the expected
-    # behavior in stand-alone mode: -E does not ignore PYTHONCASEOK, but -I
-    # does.
+    # in Python 3.9+ requires that the interpreter was not started with -E or
+    # -I.  The stand-alone executable is started by PyInstaller in isolated
+    # mode, so the interpreter's startup flags do not reflect the command line
+    # flags that pyexe parsed.  Patch _relax_case to match the behavior of the
+    # python executable: PYTHONCASEOK is ignored when -E or -I is given.
     import importlib._bootstrap_external
-    if Isolated:
-        importlib._bootstrap_external._relax_case = lambda: False  # noqa
-    elif os.environ.get('PYTHONCASEOK'):
+    if UseEnvironment and os.environ.get('PYTHONCASEOK'):
         importlib._bootstrap_external._relax_case = lambda: True  # noqa
+    else:
+        importlib._bootstrap_external._relax_case = lambda: False  # noqa
     if VerboseFlag:
         ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value = VerboseFlag
     if Optimize:
