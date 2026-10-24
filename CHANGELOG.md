@@ -28,6 +28,11 @@
   `Include_freethreaded` option.
 - Free-threaded builds do not bundle psutil; the psutil tests are skipped for
   those builds.
+- The build imports all of the bundled modules in the stand-alone executable,
+  and for each module that fails to import, its top level package is excluded
+  from the module list and the executable is rebuilt, so packages that cannot
+  work in the stand-alone executable are not bundled.  The packages installed
+  for the build are resolved per python version.
 - Exclude the pywin32 `start_pythonwin` module from the generated module list;
   importing it starts the Pythonwin GUI application, which blocked the module
   list generation indefinitely.
