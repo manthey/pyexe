@@ -4,8 +4,8 @@
 # more than necessary.
 def main():  # noqa
     import ctypes
+    import importlib
     import os
-    import six
     import sys
     import warnings
 
@@ -20,8 +20,6 @@ def main():  # noqa
         import modules_pyexe_list  # noqa, this is the output of modules_pyexe
         print(dir(modules_pyexe_list))  # for installers to include submodules
         # END IMPORT ALL MODULES
-        # Import modules which failed to be included in the auto-generated list.
-        import setuptools._vendor.pyparsing  # noqa
 
     def alternate_raw_input(prompt=None):
         """
@@ -33,7 +31,7 @@ def main():  # noqa
         if prompt and len(prompt):
             sys.stderr.write(prompt)
             sys.stderr.flush()
-        return six.moves.input('')
+        return input('')
 
     def get_env_flag(currentValue, key):
         """
@@ -63,15 +61,20 @@ def main():  # noqa
         print('%s, Version %s' % (Description, Version))
         if details > 1:
             print('Python %s' % (sys.version))
-            # pywin32
-            import win32api
-            fileinfo = win32api.GetFileVersionInfo(win32api.__file__, '\\')
-            print('pywin32: %s' % str(fileinfo['FileVersionLS'] >> 16))
+            # pywin32 (not available in free-threaded builds)
+            try:
+                import win32api
+                fileinfo = win32api.GetFileVersionInfo(win32api.__file__, '\\')
+                print('pywin32: %s' % str(fileinfo['FileVersionLS'] >> 16))
+            except Exception:
+                pass
             # Others
-            import importlib
-            for module_name in ('pip', 'psutil', 'setuptools', 'six'):
-                module = importlib.import_module(module_name)
-                print('%s: %s' % (module_name, module.__version__))
+            for module_name in ('pip', 'psutil', 'pywin32', 'setuptools'):
+                try:
+                    module = importlib.import_module(module_name)
+                    print('%s: %s' % (module_name, module.__version__))
+                except Exception:
+                    pass
 
     def run_file(runFile, runFileArgv, skipFirstLine, globenv):
         """
@@ -89,17 +92,17 @@ def main():  # noqa
         import re
         import zipfile
         sys.argv[:] = runFileArgv
+        useenc = 'utf-8'
         if zipfile.is_zipfile(os.path.abspath(runFile)):
             sys.path[0:0] = [runFile]
             with zipfile.ZipFile(runFile) as zptr:
                 src = zptr.open('__main__.py').read()
         else:
-            if not Isolated:
+            if not Isolated and not SafePath:
                 sys.path[0:0] = [os.path.split(os.path.abspath(runFile))[0]]
             with open(runFile, 'rb') as fptr:
                 src = fptr.read()
                 # This is similar to what universal newline support does
-                useenc = 'utf-8' if sys.version_info >= (3, ) else 'latin-1'
                 if src.startswith(codecs.BOM_UTF8):
                     useenc = 'utf-8'
                     src = src[len(codecs.BOM_UTF8):]
@@ -134,23 +137,9 @@ def main():  # noqa
         globs.update(globenv)
         globs['__name__'] = '__main__'
         globs['__file__'] = runFile
-        six.exec_(src, globs)
+        exec(src, globs)
         # globs.clear()
         globs.update(originalGlobals)
-
-    def skip_once(cls, method):
-        """
-        The first time a mthod of a class is called, skip doing the action.
-
-        Enter: cls: the class instance with the method.
-               method: the name of the method (a string).
-        """
-        orig = getattr(cls, method, None)
-
-        def skip(*args, **kwargs):
-            setattr(cls, method, orig)
-
-        setattr(cls, method, skip)
 
     if hasattr(sys, 'frozen'):
         delattr(sys, 'frozen')
@@ -165,19 +154,17 @@ def main():  # noqa
     RunCommand = None
     RunFile = None
     RunModule = None
+    SafePath = False
     SkipFirstLine = False
     StartupFile = None
-    TabcheckFlag = 0
     Unbuffered = False
     UseEnvironment = True
     VerboseFlag = 0
-    Warning3k = 0
     WarningBytes = 0
-    WarningDivision = None
     WarningOptions = []
     skip = 0
     sys.dont_write_bytecode = False
-    for i in six.moves.range(1, len(sys.argv)):  # noqa
+    for i in range(1, len(sys.argv)):  # noqa
         if skip:
             skip -= 1
             continue
@@ -202,7 +189,7 @@ def main():  # noqa
                     Help = True
                 elif let == 'i':
                     Interactive = True
-                elif let == 'I' and sys.version_info >= (3, ):
+                elif let == 'I':
                     UseEnvironment = False
                     Isolated = True
                 elif let == 'm' and i+1 < len(sys.argv):
@@ -211,22 +198,10 @@ def main():  # noqa
                     skip = len(sys.argv)
                 elif let == 'O':
                     Optimize += 1
-                elif let == 'q' and sys.version_info >= (3, ):
+                elif let == 'P':
+                    SafePath = True
+                elif let == 'q':
                     QuietFlag = True
-                elif let == 'Q' and sys.version_info < (3, ):
-                    if arg.startswith('-' + let) and len(arg) > 2:
-                        WarningDivision = arg[2:]
-                    else:
-                        WarningDivision = sys.argv[i+1+skip]
-                        skip += 1
-                    if WarningDivision not in ('old', 'warn', 'warnall', 'new'):
-                        sys.stderr.write("""-Q option should be `-Qold', `-Qwarn', `-Qwarnall', or `-Qnew' only
-usage: %s [option] ... [-c cmd | -m mod | file | -] [arg] ...
-Try `%s -h' for more information.
-    """ % (sys.argv[0], sys.argv[0]))
-                        sys.exit(2)
-                    if arg.startswith('-' + let) and len(arg) > 2:
-                        break
                 elif let == 'R':
                     # We can't change the hash seed after start, so ignore it.
                     pass
@@ -237,8 +212,6 @@ Try `%s -h' for more information.
                     pass
                 elif let == 'S':
                     NoSiteFlag = True
-                elif let == 't' and sys.version_info < (3, ):
-                    TabcheckFlag += 1
                 elif let == 'u':
                     Unbuffered = True
                 elif let == 'v':
@@ -261,13 +234,9 @@ Try `%s -h' for more information.
                         break
                     else:
                         skip += 1
-                elif let == '3' and sys.version_info < (3, ):
-                    Warning3k += 1
-                    TabcheckFlag = max(TabcheckFlag, 1)
                 else:
                     Help = True
-        elif ((arg == '--check-hash-based-pycs' or arg.startswith('--check-hash-based-pycs=')) and
-              sys.version_info >= (3, 6)):
+        elif arg == '--check-hash-based-pycs' or arg.startswith('--check-hash-based-pycs='):
             # There is no exposure to this option in Python's DLL, so can't do
             # it
             if '=' not in arg:
@@ -291,30 +260,25 @@ Try `%s -h' for more information.
     if Help:
         print_version(0)
         print('usage: %s [option] ... [-c cmd | -m mod | file | -] [arg] ...' % sys.argv[0])
-        print("""Options and arguments (and corresponding environment variables):""")
-        if sys.version_info >= (3, ):
-            print("""-b     : issue warnings about str(bytes_instance), str(bytearray_instance)
-         and comparing bytes/bytearray with str. (-bb: issue errors)""")
-        print("""-B     : don't write .py[co] files on import; also PYTHONDONTWRITEBYTECODE=x
+        print("""Options and arguments (and corresponding environment variables):
+-b     : issue warnings about str(bytes_instance), str(bytearray_instance)
+         and comparing bytes/bytearray with str. (-bb: issue errors)
+-B     : don't write .py[co] files on import; also PYTHONDONTWRITEBYTECODE=x
 -c cmd : program passed in as string (terminates option list)
+-d     : turn on parser debugging output
 -E     : ignore PYTHON* environment variables (such as PYTHONPATH)
 -h     : print this help message and exit (also --help, /?)
 -i     : inspect interactively after running script; forces a prompt even
-         if stdin does not appear to be a terminal; also PYTHONINSPECT=x""")
-        if sys.version_info >= (3, ):
-            print("""-I     : isolate Python from the user's environment (implies -E and -s)""")
-        print("""-m mod : run library module as a script (terminates option list)
+         if stdin does not appear to be a terminal; also PYTHONINSPECT=x
+-I     : isolate Python from the user's environment (implies -E and -s)
+-m mod : run library module as a script (terminates option list)
 -O     : optimize generated bytecode slightly; also PYTHONOPTIMIZE=x
--OO    : remove doc-strings in addition to the -O optimizations""")
-        if sys.version_info >= (3, ):
-            print("""-q     : don't print version and copyright messages on interactive startup""")
-        if sys.version_info < (3, ):
-            print("""-Q arg : division options: -Qold (default), -Qwarn, -Qwarnall, -Qnew""")
-        print("""-s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
--S     : don't imply 'import site' on initialization""")
-        if sys.version_info < (3, ):
-            print("""-t     : issue warnings about inconsistent tab usage (-tt: issue errors)""")
-        print("""-u     : unbuffered binary stdout and stderr, stdin always buffered;
+-OO    : remove doc-strings in addition to the -O optimizations
+-P     : don't prepend a potentially unsafe path to sys.path
+-q     : don't print version and copyright messages on interactive startup
+-s     : don't add user site directory to sys.path; also PYTHONNOUSERSITE
+-S     : don't imply 'import site' on initialization
+-u     : unbuffered binary stdout and stderr, stdin always buffered;
          also PYTHONUNBUFFERED=x
          see man page for details on internal buffering relating to '-u'
 -v     : verbose (trace import statements); also PYTHONVERBOSE=x
@@ -324,10 +288,8 @@ Try `%s -h' for more information.
 -W arg : warning control; arg is action:message:category:module:lineno
          also PYTHONWARNINGS=arg
 -x     : skip first line of source, allowing use of non-Unix forms of #!cmd
--X opt : set implementation-specific option""")
-        if sys.version_info < (3, ):
-            print("""-3     : warn about Python 3.x incompatibilities that 2to3 cannot trivially fix""")  # noqa
-        print("""file   : program read from script file
+-X opt : set implementation-specific option
+file   : program read from script file
 -      : program read from stdin (default; interactive mode if a tty)
 arg ...: arguments passed to program in sys.argv[1:]
 Stand-alone specific options:
@@ -337,6 +299,8 @@ Other environment variables:
 PYTHONSTARTUP: file executed on interactive startup (no default)
 PYTHONPATH   : ';'-separated list of directories prefixed to the
                default module search path.  The result is sys.path.
+PYTHONSAFEPATH: don't automatically prepend a potentially unsafe path to
+               sys.path unless '-P' is given.
 PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
         sys.exit(0)
     if PrintVersion:
@@ -358,6 +322,8 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
         if os.environ.get('PYTHONPATH'):
             sys.path[0:0] = os.environ.get('PYTHONPATH').split(os.pathsep)
         StartupFile = os.environ.get('PYTHONSTARTUP')
+        if os.environ.get('PYTHONSAFEPATH'):
+            SafePath = True
         if Unbuffered is False and os.environ.get('PYTHONUNBUFFERED'):
             Unbuffered = True
         VerboseFlag = get_env_flag(VerboseFlag, 'PYTHONVERBOSE')
@@ -366,17 +332,57 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
     if Isolated:
         # We have to suppress some environment effects
         os.environ.pop('PYTHONCASEOK', None)
-        for key in list(sys.modules):  # for Python 3.x
-            if hasattr(sys.modules[key], '_relax_case'):
-                sys.modules[key]._relax_case = lambda: False
+    # PYTHONCASEOK is honored by the import system through _relax_case, which
+    # in Python 3.11+ also requires that the interpreter was not started with
+    # -E or -I (or frozen, since PyInstaller starts the interpreter in isolated
+    # mode).  Patch the import system's version to restore the expected
+    # behavior in stand-alone mode: -E does not ignore PYTHONCASEOK, but -I
+    # does.
+    import importlib._bootstrap_external
+    if Isolated:
+        importlib._bootstrap_external._relax_case = lambda: False  # noqa
+    elif os.environ.get('PYTHONCASEOK'):
+        importlib._bootstrap_external._relax_case = lambda: True  # noqa
     if VerboseFlag:
         ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value = VerboseFlag
-    if TabcheckFlag:
-        ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_TabcheckFlag').value = TabcheckFlag
-    if Warning3k:
-        ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_Py3kWarningFlag').value = Warning3k
     if Optimize:
-        ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_OptimizeFlag').value = Optimize
+        # In Python 3.11+, the interpreter's optimization level is fixed at
+        # startup and the legacy Py_OptimizeFlag global is no longer
+        # consulted.  Patch the import system's source loader so that modules
+        # imported after start are compiled at the requested optimization
+        # level, and make the bytecode cache path match.
+        _be = importlib._bootstrap_external
+        _orig_source_file_loader = _be.SourceFileLoader
+
+        class _OptimizedSourceLoader(_orig_source_file_loader):
+            def source_to_code(self, data, path, *, _optimize=-1):
+                return _orig_source_file_loader.source_to_code(
+                    self, data, path, _optimize=Optimize)
+
+        _orig_cache_from_source = _be.cache_from_source
+
+        def _optimized_cache_from_source(path, *args, **kwargs):
+            if not kwargs.get('optimization'):
+                kwargs['optimization'] = str(Optimize)
+            return _orig_cache_from_source(path, *args, **kwargs)
+
+        _be.cache_from_source = _optimized_cache_from_source
+        # The loader classes are captured in the FileFinder path hook closure
+        # at interpreter startup, so rebuild that hook with an optimized
+        # source loader and clear the finder cache so subsequent imports use
+        # it.  The importlib._bootstrap_external.SourceFileLoader global is
+        # deliberately not replaced, since importlib.abc registration expects
+        # the original classes to exist in the frozen bootstrap module.
+        loader_details = [
+            (_OptimizedSourceLoader, suffixes) if cls is _orig_source_file_loader
+            else (cls, suffixes)
+            for cls, suffixes in _be._get_supported_file_loaders()]
+        _optimized_hook = _be.FileFinder.path_hook(*loader_details)
+        sys.path_hooks[:] = [
+            _optimized_hook if getattr(hook, '__name__', '') == 'path_hook_for_FileFinder'
+            else hook
+            for hook in sys.path_hooks]
+        sys.path_importer_cache.clear()
     if WarningBytes:
         for idx, f in enumerate(warnings.filters):
             if f[2] == BytesWarning:
@@ -386,18 +392,9 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
             warnings.filterwarnings(
                 'default' if WarningBytes == 1 else 'error', category=BytesWarning)
         ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_BytesWarningFlag').value = WarningBytes
-    if WarningDivision == 'new':
-        ctypes.c_int.in_dll(ctypes.pythonapi, '_Py_QnewFlag').value = 1
-    elif WarningDivision in ('warn', 'warnall') or Warning3k:
-        ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_DivisionWarningFlag').value = (
-            2 if WarningDivision == 'warnall' else 1)
-        warnings.filterwarnings('default', category=DeprecationWarning,
-                                message='classic [a-z]+ division')
-    if Warning3k:
-        warnings.filterwarnings('default', category=DeprecationWarning)
     sys.warnoptions[0:0] = WarningOptions
     warnings._processoptions(WarningOptions)
-    bufsize = 1 if sys.version_info >= (3, ) else 0
+    bufsize = 1
     if Unbuffered:
         sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
         sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
@@ -417,14 +414,14 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
         sys.argv[:] = RunModuleArgv
         runpy.run_module(RunModule, run_name='__main__')
     elif RunCommand is not None:
-        if not Isolated:
+        if not Isolated and not SafePath:
             sys.path[0:0] = ['']
         sys.argv[:] = RunCommandArgv
-        six.exec_(RunCommand, globenv)
+        exec(RunCommand, globenv)
     elif Interactive is None:
         Interactive = 'check'
     if Interactive:
-        if not Isolated:
+        if not Isolated and not SafePath:
             sys.path[0:0] = ['']
         if InteractiveArgv:
             sys.argv[:] = InteractiveArgv
@@ -444,12 +441,7 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
                 banner += '\nType "help", "copyright", "credits" or "license" for more information.'
             if RunModule or RunCommand or QuietFlag:
                 banner = ''
-                if sys.version_info < (3, ):
-                    skip_once(cons, 'write')
-            kwargs = {}
-            if sys.version_info >= (3, 6):
-                kwargs['exitmsg'] = ''
-            cons.interact(banner=banner, **kwargs)
+            cons.interact(banner=banner, exitmsg='')
         else:
             src = sys.stdin.read()
             # This doesn't work the way I expect for some reason
@@ -457,7 +449,7 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
             #  interp.runsource(src, '<stdin>')
             # But an exec works fine
             globenv['__file__'] = '<stdin>'
-            six.exec_(src, globenv)
+            exec(src, globenv)
 
 
 main()

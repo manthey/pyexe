@@ -2,7 +2,6 @@ import multiprocessing
 import random
 import sys
 import time
-from six.moves import range
 
 
 maxProcesses = 2

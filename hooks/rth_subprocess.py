@@ -4,37 +4,23 @@ import sys
 
 
 class _pyexePopen(subprocess.Popen):
-    if sys.version_info >= (3, ):
-        def __init__(self, args, bufsize=-1, executable=None, stdin=None,
-                     stdout=None, stderr=None, preexec_fn=None,
-                     close_fds=getattr(subprocess, '_PLATFORM_DEFAULT_CLOSE_FDS', True),
-                     shell=False, cwd=None, env=None, *arglist, **kwargs):
-            with self._prepare_env(args, executable, env):
-                result = super(_pyexePopen, self).__init__(
-                    args, bufsize, executable, stdin, stdout, stderr,
-                    preexec_fn, close_fds, shell, cwd, env, *arglist, **kwargs)
-            return result
-    else:
-        def __init__(self, args, bufsize=0, executable=None, stdin=None,
-                     stdout=None, stderr=None, preexec_fn=None,
-                     close_fds=False, shell=False, cwd=None, env=None,
-                     *arglist, **kwargs):
-            with self._prepare_env(args, executable, env):
-                result = super(_pyexePopen, self).__init__(
-                    args, bufsize, executable, stdin, stdout, stderr,
-                    preexec_fn, close_fds, shell, cwd, env, *arglist, **kwargs)
-            return result
+    def __init__(self, args, bufsize=-1, executable=None, stdin=None,
+                 stdout=None, stderr=None, preexec_fn=None, close_fds=True,
+                 shell=False, cwd=None, env=None, *arglist, **kwargs):
+        with self._prepare_env(args, executable, env):
+            super(_pyexePopen, self).__init__(
+                args, bufsize, executable, stdin, stdout, stderr,
+                preexec_fn, close_fds, shell, cwd, env, *arglist, **kwargs)
 
     @contextlib.contextmanager
     def _prepare_env(self, args, executable, env):
         import os
-        import six
         import sys
 
         inparam = False
         inenv = False
         origname = None
-        if (not isinstance(args, six.string_types) and len(args) >= 1 and
+        if (not isinstance(args, str) and len(args) >= 1 and
                 getattr(sys, '_MEIPASS', None)):
             exename = args[0]
             exelower = exename.lower()

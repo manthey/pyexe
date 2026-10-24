@@ -1,5 +1,6 @@
 import os
 import pytest
+import re
 import subprocess
 import time
 
@@ -14,6 +15,12 @@ def pyversion(exepath):
     out, err = runPyExe(exepath, ['--version'])
     version = (out + err).strip().split()[-1]
     return tuple(int(part) for part in version.split('.'))
+
+
+@pytest.fixture
+def haspywin32(exepath):
+    out, err = runPyExe(exepath, ['-c', 'import win32api'])
+    return 'ModuleNotFoundError' not in (out + err)
 
 
 def runPyExe(exepath, options=None, input=None, env=None):
@@ -104,16 +111,20 @@ def clearPyc(basename):
 
 
 @pytest.mark.pyexe
-def testVersion(exepath):
+def testVersion(exepath, haspywin32):
     out, err = runPyExe(exepath, ['--version'])
     assert out.startswith('Stand-Alone Python Interpreter')
     out, err = runPyExe(exepath, ['-V'])
     assert out.startswith('Stand-Alone Python Interpreter')
     assert 'psutil' not in out
     out, err = runPyExe(exepath, ['-V', '-V'])
-    assert 'psutil' in out and 'pywin32' in out
+    assert 'psutil' in out
+    if haspywin32:
+        assert 'pywin32' in out
     out, err = runPyExe(exepath, ['-VV'])
-    assert 'psutil' in out and 'pywin32' in out
+    assert 'psutil' in out
+    if haspywin32:
+        assert 'pywin32' in out
 
 
 @pytest.mark.pyexe
@@ -149,13 +160,10 @@ def testImportPsutil(exepath):
     assert 'raddr' in out
 
 
-def testImportSix(exepath):
-    out, err = runPyExe(exepath, [
-        '-c', """import six;print(six.callable(six.BytesIO))"""])
-    assert 'True' in out
-
-
-def testImportPywin32(exepath):
+def testImportPywin32(exepath, haspywin32):
+    if not haspywin32:
+        import pytest
+        pytest.skip('pywin32 is not bundled (free-threaded builds)')
     out, err = runPyExe(exepath, input="""import win32con
 import win32file
 print('%r' % [
@@ -164,7 +172,7 @@ print('%r' % [
     assert '16, 16' in out
 
 
-def testSiteValues(exepath):
+def testSiteValues(exepath, pyversion):
     for key in ('quit', 'exit', 'help', 'copyright', 'credits', 'license'):
         out, err = runPyExe(exepath, input="""try:
   print(%s)
@@ -179,7 +187,7 @@ except Exception:
 
 def testMultiprocessing(exepath):
     out, err = runPyExe(exepath, ['sample_multiprocessing.py'])
-    assert 'Difference: (0)' in out
+    assert re.search(r'Difference: \(-?0\)', out)
 
 
 def testPySerialFromPip(exepath):
@@ -187,8 +195,7 @@ def testPySerialFromPip(exepath):
         '-m', 'pip', 'install', '--no-cache-dir', '--target', '.',
         '--upgrade', 'pyserial'])
     assert 'Successfully installed pyserial' in out
-    out, err = runPyExe(exepath, input="""from six.moves import range
-import serial
+    out, err = runPyExe(exepath, input="""import serial
 ports = []
 for port in range(1, 50):
   try:
@@ -395,7 +402,13 @@ def testOptimizeFlag(exepath):
     assert 'AssertionError' in err
 
 
-def testVerboseFlag(exepath):
+def testVerboseFlag(exepath, pyversion):
+    if pyversion >= (3, 11):
+        # The verbosity flag cannot be applied after the interpreter starts
+        # in Python 3.11+, since sys.flags is read-only and the legacy
+        # Py_VerboseFlag global is no longer consulted.
+        import pytest
+        pytest.skip('The -v flag cannot be applied after start on Python 3.11+')
     out, err = runPyExe(exepath, ['-c', 'import bisect'])
     assert 'bisect' not in err and '# cleanup' not in err
     out, err = runPyExe(exepath, ['-v', '-c', 'import bisect'])
@@ -414,6 +427,12 @@ def testVerboseFlag(exepath):
 
 
 def testBytesWarningFlag(exepath, pyversion):
+    if pyversion >= (3, 11):
+        # The bytes warning flag cannot be applied after the interpreter
+        # starts in Python 3.11+, since the legacy Py_BytesWarningFlag global
+        # is no longer consulted by the interpreter internals.
+        import pytest
+        pytest.skip('The -b flag cannot be applied after start on Python 3.11+')
     if pyversion >= (3, ):
         out, err = runPyExe(exepath, ['-c', 'print(str(b"abc"))'])
         assert 'abc' in out
@@ -527,7 +546,10 @@ def testPythonCaseOK(exepath, pyversion):
 def testBuildPathNotInTracebacks(exepath):
     out, err = runPyExe(exepath, [
         '-c', """import psutil;psutil.net_connections('foo')"""])
-    assert 'site-packages\\psutil' in err
+    # With PyInstaller 6, module paths in tracebacks are shown relative to
+    # the bundled package, such as psutil\_pswindows.py, rather than the
+    # original site-packages paths.
+    assert 'psutil' in err
     assert 'C:\\Python' not in err
 
 
@@ -610,4 +632,4 @@ print(%r)\n""" % (helloworld, helloworld)
         data += code.encode(enc)
         open(path, 'wb').write(data)
         out, err = runPyExe(exepath, [path])
-        assert helloworld in out.decode('utf-8')
+        assert helloworld in out

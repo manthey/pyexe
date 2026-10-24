@@ -1,105 +1,109 @@
 environment:
   matrix:
-    - PYTHON: "C:\\Python38"
-      INSTALL_OPTIONS: 3.8 --min=0
-      OUTPUT: "py38.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python38-x64"
-      INSTALL_OPTIONS: 3.8 --min=0 --64
-      OUTPUT: "py38-64.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python37"
-      INSTALL_OPTIONS: 3.7 --min=4
-      OUTPUT: "py37.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python37-x64"
-      INSTALL_OPTIONS: 3.7 --min=4 --64
-      OUTPUT: "py37-64.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python27"
-      INSTALL_OPTIONS: 2.7 --min=16
-      OUTPUT: "py27.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python27-x64"
-      INSTALL_OPTIONS: 2.7 --min=16 --64
-      OUTPUT: "py27-64.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python35"
-      INSTALL_OPTIONS: 3.5 --min=4
-      OUTPUT: "py35.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python35-x64"
-      INSTALL_OPTIONS: 3.5 --min=4 --64
-      OUTPUT: "py35-64.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python36"
-      INSTALL_OPTIONS: 3.6 --min=8
-      OUTPUT: "py36.exe"
-      ALTPYTHON: "C:\\Python36-x64"
-    - PYTHON: "C:\\Python36-x64"
-      INSTALL_OPTIONS: 3.6 --min=8 --64
-      OUTPUT: "py36-64.exe"
-      ALTPYTHON: "C:\\Python36"
+    - PYTHON: "C:\\Python311"
+      PYBIN: "C:\\Python311\\python.exe"
+      INSTALL_OPTIONS: 3.11 --min=0
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py311.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python311-x64"
+      PYBIN: "C:\\Python311-x64\\python.exe"
+      INSTALL_OPTIONS: 3.11 --min=0 --64
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py311-64.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python312"
+      PYBIN: "C:\\Python312\\python.exe"
+      INSTALL_OPTIONS: 3.12 --min=0
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py312.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python312-x64"
+      PYBIN: "C:\\Python312-x64\\python.exe"
+      INSTALL_OPTIONS: 3.12 --min=0 --64
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py312-64.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python313"
+      PYBIN: "C:\\Python313\\python.exe"
+      INSTALL_OPTIONS: 3.13 --min=0
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py313.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python313-x64"
+      PYBIN: "C:\\Python313-x64\\python.exe"
+      INSTALL_OPTIONS: 3.13 --min=0 --64
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py313-64.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python314"
+      PYBIN: "C:\\Python314\\python.exe"
+      INSTALL_OPTIONS: 3.14 --min=0
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py314.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python314-x64"
+      PYBIN: "C:\\Python314-x64\\python.exe"
+      INSTALL_OPTIONS: 3.14 --min=0 --64
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py314-64.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python314-x64"
+      PYBIN: "C:\\Python314-x64\\python3.14t.exe"
+      INSTALL_OPTIONS: 3.14t --min=0 --64
+      PACKAGES: "psutil"
+      OUTPUT: "py314t-64.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python315"
+      PYBIN: "C:\\Python315\\python.exe"
+      INSTALL_OPTIONS: 3.15 --min=0
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py315.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python315-x64"
+      PYBIN: "C:\\Python315-x64\\python.exe"
+      INSTALL_OPTIONS: 3.15 --min=0 --64
+      PACKAGES: "pywin32 psutil"
+      OUTPUT: "py315-64.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
+    - PYTHON: "C:\\Python315-x64"
+      PYBIN: "C:\\Python315-x64\\python3.15t.exe"
+      INSTALL_OPTIONS: 3.15t --min=0 --64
+      PACKAGES: "psutil"
+      OUTPUT: "py315t-64.exe"
+      ALTPYTHON: "C:\\PyBootstrap"
 
 init:
   - SET PROJDIR=%cd%
   - SET ORIGPATH=%PATH%
-  # Disable upx; it doesn't work with Python 3 for some reason
-  # - mkdir c:\u
-  # - cd c:\u
-  # - curl -L -O "https://github.com/upx/upx/releases/download/v3.94/upx394w.zip"
-  # - unzip upx394w.zip
-  # - cd %PROJDIR%
   # Print the build system version
   - ver
 
 build_script:
   - ps: |
-      if (-not (Test-Path $env:PYTHON)) {
-        if ($env:PYTHON -eq "C:\\Python38") {
-          iex "choco install python3 --version=3.8 --no-progress --params /InstallDir:$Env:PYTHON --x86"
-        }
-        if ($env:PYTHON -eq "C:\\Python38-x64") {
-          iex "choco install python3 --version=3.8 --no-progress --params /InstallDir:$Env:PYTHON"
-        }
+      if (-not (Test-Path "$env:ALTPYTHON\python.exe")) {
+        iex "choco install python311 --version=3.11.9 --no-progress --params /InstallDir:$env:ALTPYTHON"
       }
-  # Upgrade the appveyor python version
+  # Upgrade the bootstrap python version
   - "SET PATH=%ALTPYTHON%;%ALTPYTHON%\\Scripts;%ORIGPATH%"
   - python -m pip install --upgrade requests
   - "python install_python.py %INSTALL_OPTIONS% --out=%PYTHON% --force"
   - del /S /Q %PYTHON%\*.pyc >NUL
-  - del /S /Q %PYTHON%\*.pyo >NUL
   # Use the specific python version for building
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%ORIGPATH%"
-  - python -m pip install --upgrade pip
-  - python -m pip install --upgrade setuptools
-  - python -m pip install --upgrade pywin32 psutil six setuptools
+  - "%PYBIN% -m pip install --upgrade pip"
+  - "%PYBIN% -m pip install --upgrade %PACKAGES%"
   # Generate the list of modules we need to import
   - del /S /Q %PYTHON%\*.pyc >NUL
-  - del /S /Q %PYTHON%\*.pyo >NUL
-  - python modules_pyexe.py pyexe.py
-  # Install PyInstaller.  We patch various aspects of PyInstaller, so use a
-  # fixed version.
-  - python -m pip install pyinstaller==3.4
-  # Install a patching program
-  - python -m pip install patch
-  # Remove the site module hook from PyInstaller; we need the site module as is
-  - "del /q %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\hook-site.*"
-  - "del /q /s %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path\\__pycache__"
+  - "%PYBIN% modules_pyexe.py pyexe.py"
+  # Install PyInstaller.
+  - "%PYBIN% -m pip install pyinstaller==6.22.3"
   # Copy a build hook to PyInstaller to include the cacerts.pem file for pip.
   - "copy hooks\\hook*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\hooks\\."
-  # Replace the multiprocessing loader hook
-  - "copy hooks\\pyi_rth*.* %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader\\rthooks\\."
-  # Replace the stage 3 importer
-  - "pushd %PYTHON%\\Lib\\site-packages\\PyInstaller\\loader && python -m patch %PROJDIR%\\hooks\\pyimod03_importers.py.diff && popd"
-  # Patch the PyInstaller building\utils.py to avoid storing project path
-  # names.
-  - "pushd %PYTHON%\\Lib\\site-packages\\PyInstaller\\building && python -m patch %PROJDIR%\\hooks\\utils.py.diff && popd"
   - del /S /Q %PYTHON%\*.pyc >NUL
-  - del /S /Q %PYTHON%\*.pyo >NUL
   # Save the artifact immediately
   - appveyor PushArtifact pyexe.py
-  - "python -m PyInstaller --onefile pyexe.py --upx-dir C:\\u\\upx394w --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --runtime-hook hooks\\rth_pip.py --icon %PYTHON%\\pythonw.exe --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli-32.exe;setuptools --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli-64.exe;setuptools --add-binary %PYTHON%\\Lib\\site-packages\\setuptools\\cli.exe;setuptools --add-binary \"%PYTHON%\\Lib\\site-packages\\setuptools\\command\\launcher manifest.xml;setuptools\\command\""
+  - "%PYBIN% -m PyInstaller --onefile pyexe.py --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\\rth_subprocess.py --runtime-hook hooks\\rth_pip.py --runtime-hook hooks\\pyi_rth_multiprocessing.py --icon %PYTHON%\\pythonw.exe"
   - cp dist\pyexe.exe %OUTPUT%
   # Save the artifact immediately
   - appveyor PushArtifact %OUTPUT%
@@ -110,19 +114,18 @@ test_script:
   # Sometimes we send test data to this directory
   - mkdir c:\temp
   - SET PATH=%ORIGPATH%
-  - pip install pytest
+  - "%ALTPYTHON%\\python -m pip install pytest"
   - cd tests
-  # Build a zipapp for our tests; it doesn't exist before 3.5, we could use
-  # our own executable to do it.
-  - C:\Python36-x64\python -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
+  # Build a zipapp for our tests; we use the bootstrap python to do it.
+  - "%ALTPYTHON%\\python -m zipapp --output ..\\sample_zipapp.pyz -p \"/usr/bin/env python\" sample_zipapp"
   # Make sure we only have original files here.
   - git clean -fxd .
-  - "python -m pytest -l --cache-clear --exe=..\\%OUTPUT%"
+  - "%ALTPYTHON%\\python -m pytest -l --cache-clear --exe=..\\%OUTPUT%"
   # We can test the tests against the master python.  We have to exclude a few
   # tests that only work on the stand-alone build.
   # Make sure we only have original files here.
   - git clean -fxd .
-  - 'python -m pytest -l --cache-clear --exe=%PYTHON%\python -m "not pyexe"'
+  - "%ALTPYTHON%\\python -m pytest -l --cache-clear --exe=%PYBIN% -m \"not pyexe\""
 
 deploy:
   - provider: GitHub

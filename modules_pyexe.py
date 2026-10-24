@@ -2,9 +2,8 @@
 
 import importlib
 import os
+import pkgutil
 import re
-import six
-import subprocess
 import sys
 
 # Modules we know we can't work with or are completely pointless
@@ -13,18 +12,17 @@ ExcludeModules = [
     'pyexe', 'modules_pyexe', 'modules_pyexe_list',
     # installers and modules the installers require
     'py2exe',
-    'PyInstaller', 'pefile', 'macholib', 'dis3', 'future', 'altgraph',
-    'ordlookup', 'peutils', 'libfuturize', 'libpasteurize', 'past',
+    'PyInstaller', '_pyinstaller_hooks_contrib', 'pyinstaller_hooks_contrib',
+    'pefile', 'macholib', 'altgraph', 'distlib', 'virtualenv',
+    'ordlookup', 'peutils',
     # test
     'test', 'tests', 'asyncio.test_utils',
     # Pointless modules
     'antigravity', 'this', 'lib2to3.__main__', 'unittest.__main__',
     # Modules in appveyor that shouldn't be included, plus tkinter
-    'Canvas', 'Dialog', 'FileDialog', 'FixTk', 'ScrolledText', 'SimpleDialog',
-    'Tix', 'Tkconstants', 'Tkdnd', 'Tkinter', '_markupbase', '_tkinter',
-    'adodbapi', 'altgraph', 'tkColorChooser', 'tkCommonDialog', 'tkFileDialog',
-    'tkFont', 'tkMessageBox', 'tkSimpleDialog', 'tkinter', 'ttk', 'turtle',
-    'turtledemo', 'tcl', 'tk', 'Tkinter',
+    'FixTk', '_tkinter',
+    'adodbapi', 'altgraph', 'tkinter', 'turtle',
+    'turtledemo', 'tcl', 'tk',
     # These cause test importation fail
     'idlelib', 'win32traceutil', 'venv',
     # These cause --all flag to fail
@@ -36,11 +34,44 @@ ExcludeModules = [
     'win32com.axdebug.debugger', 'win32com.axdebug.dump',
     'win32com.axscript.client.debug',
 ]
-# Exclude examples, tests, and Tk.  Some of these won't exist in the default
-# installation
+# Exclude examples, tests, vendor directories, and Tk.  Some of these won't
+# exist in the default installation
 ExcludeParts = [
     'examples', 'demos', 'test', 'tests', 'testsuite', 'testing',
-    'test_manage', 'Tk']
+    'test_manage', 'Tk', '_vendor', 'vendor']
+
+
+def walk_packages(path=None, prefix=''):
+    """
+    Walk modules and packages recursively, similar to pkgutil.walk_packages,
+    but do not descend into excluded package components (vendor directories,
+    tests, examples, etc.), since the modules there should not be exposed as
+    importable top level or submodule names.
+    """
+    for finder, name, ispkg in pkgutil.iter_modules(path, prefix):
+        yield finder, name, ispkg
+        if ispkg and not any(
+                part in ExcludeParts for part in name.split('.')):
+            try:
+                module = importlib.import_module(name)
+                subpath = list(getattr(module, '__path__', []))
+            except Exception:
+                subpath = []
+            for item in walk_packages(subpath, name + '.'):
+                yield item
+
+
+def excluded_by_path(module):
+    """
+    Check if a module is located in a directory that should not be exposed,
+    such as a vendor directory, examples, or tests.
+
+    Enter: module: the imported module to check.
+    Exit:  True if the module is in an excluded directory.
+    """
+    filepath = getattr(module, '__file__', None) or ''
+    parts = os.path.normpath(os.path.dirname(os.path.abspath(filepath))).split(os.sep)
+    return any(part in ExcludeParts for part in parts)
 
 
 def list_modules():
@@ -49,24 +80,14 @@ def list_modules():
 
     Exit:  modules: a list of modules.
     """
-    with open(os.devnull, 'w') as devnull:
-        modules = subprocess.Popen(
-            ['python', '-c', 'help("modules")'],
-            stdout=subprocess.PIPE, stderr=devnull).stdout.read()
-        if not isinstance(modules, six.string_types):
-            modules = modules.decode('utf8')
-        submodules = subprocess.Popen(
-            ['python', '-c', 'help("modules .")'],
-            stdout=subprocess.PIPE, stderr=devnull).stdout.read()
-        if not isinstance(submodules, six.string_types):
-            submodules = submodules.decode('utf8')
-    modules = modules.replace('\r\n', '\n').strip().split('\n\n')[1].split()
-    submodules = submodules.replace('\r\n', '\n').strip().split('\n\n')[1].split('\n')
-    submodules = [item.strip() for item in [
-        item.split(' - ')[0] for item in submodules] if '.' in item]
-    # This filter shouldn't remove anything
-    submodules = [item for item in submodules if item.split('.')[0] in modules]
-    modules = set(modules + submodules)
+    # Snapshot sys.path before importing anything; some packages (such as
+    # setuptools) add their own vendored directories to sys.path on import,
+    # and modules in those directories should not be included.
+    basepath = list(sys.path)
+    modules = set()
+    for item in walk_packages(basepath):
+        modules.add(item[1])
+    modules = sorted(modules)
 
     # Remove modules with dashes in their names
     modules = [item for item in modules if '-' not in item]
@@ -90,6 +111,8 @@ def list_modules():
             sys.stderr.write('? %s\r' % item)
             sys.stderr.flush()
             mod = importlib.import_module(item)  # noqa
+            if excluded_by_path(mod):
+                raise ImportError('Excluded path: %s' % getattr(mod, '__file__', ''))
             sys.stderr.write('+ %s\n' % item)
             sys.stderr.flush()
         except BaseException:
@@ -126,6 +149,14 @@ If a path is specified, the pyexe.py file is altered.  If no path is specified,
 the module list is written to stdout.""")
         sys.exit(0)
     modules = list_modules()
+    listPath = os.path.join(
+        os.path.dirname(os.path.abspath(pyexePath)) if pyexePath else '.',
+        'modules_pyexe_list.py')
+    with open(listPath, 'w') as fptr:
+        fptr.write('# Generated by modules_pyexe.py.  Do not edit.\n')
+        for item in modules:
+            fptr.write('import %s\n' % item)
+    print('Wrote %s' % listPath)
     if pyexePath:
         head = b'    # IMPORT ALL MODULES'
         tail = b'    # END IMPORT ALL MODULES'

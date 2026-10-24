@@ -2,10 +2,36 @@
 
 ## Unreleased
 
+### New Features
+
+- Support Python 3.11 through 3.15, in 32-bit and 64-bit builds, plus 64-bit
+  free-threaded builds for 3.14t and 3.15t.
+- Support the `-P` flag and the `PYTHONSAFEPATH` environment variable.
+- Port to PyInstaller 6, and register the frozen importers with pip's vendored
+  distlib resource finder so pip works in the stand-alone executable.
+
+### Changes
+
+- Drop Python 2 support and the bundled `six` module.
+- Drop the obsolete `-Q`, `-t`, and `-3` flags and their help entries.
+- The module list generation now uses `pkgutil` instead of parsing
+  `help("modules")` output, skips vendored, test, and example directories, and
+  writes a real `modules_pyexe_list.py` module so the `--all` import list can
+  be bundled.
+- `install_python.py` supports installing free-threaded builds by appending a
+  't' to the version, such as `3.14t`, using the installer's
+  `Include_freethreaded` option.
+- On Python 3.11+, `-O` and `-OO` are emulated by patching the import system
+  (the legacy `Py_OptimizeFlag` global is no longer consulted after start),
+  and `PYTHONCASEOK` is applied by patching the import system's `_relax_case`.
+- The `-v` and `-b` flags are accepted but cannot be applied on Python 3.11+,
+  since the interpreter no longer consults the legacy flag globals after
+  startup.
+
 ### Package Versions
 
-- Python 2.7.16, 3.5.4, 3.6.8, 3.7.4
-- pywin32 225, pip 19.2.3, psutil 5.6.3, setuptools 41.2.0, six 1.12.0
+- Python 3.11.x, 3.12.x, 3.13.x, 3.14.x, 3.14t.x, 3.15.x, 3.15t.x
+- pywin32 312, pip 26.2.2, psutil 7.2.2, setuptools 84.2.1
 
 ## Version 18
 
