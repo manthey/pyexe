@@ -104,6 +104,13 @@ def list_modules():
     modules = [item for item in modules if not regex.search(item)]
     modules.sort()
 
+    # win32ui initializes the MFC state that some modules, such as dde,
+    # require to be present before they can be imported.  Import it before
+    # the other modules so those modules work with the --all flag.
+    if 'win32ui' in modules:
+        modules.remove('win32ui')
+        modules.insert(0, 'win32ui')
+
     for item in modules[:]:
         try:
             # If we already imported the module based on a previous import, we
@@ -164,7 +171,17 @@ the module list is written to stdout.""")
         head = b'    # IMPORT ALL MODULES'
         tail = b'    # END IMPORT ALL MODULES'
         data = open(pyexePath, 'rb').read()
-        imports = ('\n        import '.join([''] + modules) + '\n').encode('utf8')
+        # Guard each import individually, so that a module that cannot be
+        # imported in the stand-alone executable is reported to stderr
+        # without preventing the remaining bundled modules from being
+        # imported.
+        imports = ('\n' + ''.join([
+            '        try:\n'
+            '            import %s\n'
+            '        except BaseException as _exception:\n'
+            '            sys.stderr.write("Failed to import %s: %%r\\n" %% _exception)\n'
+            '            sys.stderr.flush()\n' % (item, item)
+            for item in modules])).encode('utf8')
         data = data.split(head, 1)[0] + head + imports + tail + data.split(tail, 1)[1]
         open(pyexePath, 'wb').write(data)
     else:

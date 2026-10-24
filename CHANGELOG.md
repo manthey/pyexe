@@ -31,6 +31,11 @@
 - Exclude the pywin32 `start_pythonwin` module from the generated module list;
   importing it starts the Pythonwin GUI application, which blocked the module
   list generation indefinitely.
+- The `--all` import list imports `win32ui` before the other modules, so that
+  modules requiring the MFC state it initializes (such as `dde`) can be
+  imported, and each module import is individually guarded: a module that
+  cannot be imported is reported to stderr without preventing the remaining
+  modules from being imported.
 - On Python 3.11+, `-O` and `-OO` are emulated by patching the import system
   (the legacy `Py_OptimizeFlag` global is no longer consulted after start),
   and `PYTHONCASEOK` is applied by patching the import system's `_relax_case`.
