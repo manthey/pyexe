@@ -4,10 +4,10 @@
 
 Here is a stand-alone version of python that is a single Windows executable.
 
-It consists of recent versions of Python (with builds for 3.11 through 3.15,
-each in 32-bit and 64-bit versions, plus 64-bit free-threaded builds for 3.14t
-and 3.15t), pywin32, psutil, pip, setuptools, and includes all packages that
-can be included without additional dlls, excepting tkinter.
+It consists of recent versions of Python (with 64-bit builds for 3.11 through
+3.15, plus free-threaded builds for 3.14t and 3.15t), pywin32, psutil, pip,
+setuptools, and includes all packages that can be included without additional
+dlls, excepting tkinter.
 
 See the GitHub Actions workflow (.github/workflows/build.yml) for build
 instructions.

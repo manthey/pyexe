@@ -4,8 +4,8 @@
 
 ### New Features
 
-- Support Python 3.11 through 3.15, in 32-bit and 64-bit builds, plus 64-bit
-  free-threaded builds for 3.14t and 3.15t.
+- Support Python 3.11 through 3.15 in 64-bit builds, plus free-threaded
+  builds for 3.14t and 3.15t.
 - Support the `-P` flag and the `PYTHONSAFEPATH` environment variable.
 - Port to PyInstaller 6, and register the frozen importers with pip's vendored
   distlib resource finder so pip works in the stand-alone executable.
@@ -16,6 +16,9 @@
 
 - Drop Python 2 support and the bundled `six` module.
 - Drop the obsolete `-Q`, `-t`, and `-3` flags and their help entries.
+- Drop 32-bit builds.  The executables are no longer suffixed with '-64',
+  since only 64-bit builds are made, and install_python.py installs the
+  64-bit build by default (use --32 for a 32-bit build).
 - The module list generation now uses `pkgutil` instead of parsing
   `help("modules")` output, skips vendored, test, and example directories, and
   writes a real `modules_pyexe_list.py` module so the `--all` import list can
@@ -32,7 +35,7 @@
 
 ### Package Versions
 
-- Python 3.11.x, 3.12.x, 3.13.x, 3.14.x, 3.14t.x, 3.15.x, 3.15t.x
+- Python 3.11.x, 3.12.x, 3.13.x, 3.14.x, 3.14t.x, 3.15.x, 3.15t.x (64-bit)
 - pywin32 312, pip 26.2.2, psutil 7.2.2, setuptools 84.2.1
 
 ## Version 18

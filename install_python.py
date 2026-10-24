@@ -10,7 +10,7 @@ if __name__ == '__main__':  # noqa
     force = False
     freethreaded = False
     help = False
-    is64 = False
+    is64 = True
     keep = False
     minpoint = 0
     remove = False
@@ -53,6 +53,7 @@ Syntax: install_python.py (version) [--32|--64] [--out=(destination directory)]
 
 Specify just the major and minor version, such as 3.11, optionally followed
 by a 't' for a free-threaded build, such as 3.14t.
+The 64-bit build is installed by default; use --32 for a 32-bit build.
 --force will overwrite an existing installation file.
 --keep keeps the install file.
 --remove first uninstalls the specified version of python.""")
