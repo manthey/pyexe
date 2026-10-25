@@ -1,0 +1,343 @@
+name: build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*.*.*']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  TARGETDIR: 'C:\pyexe_target'
+
+jobs:
+  build:
+    name: ${{ matrix.output }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - py: '3.11'
+            install-options: '3.11 --min=0'
+            bin: 'python.exe'
+            output: 'py311.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.12'
+            install-options: '3.12 --min=0'
+            bin: 'python.exe'
+            output: 'py312.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.13'
+            install-options: '3.13 --min=0'
+            bin: 'python.exe'
+            output: 'py313.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.14'
+            install-options: '3.14 --min=0'
+            bin: 'python.exe'
+            output: 'py314.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.14t'
+            install-options: '3.14t --min=0'
+            bin: 'python3.14t.exe'
+            output: 'py314t.exe'
+            packages: ''
+          - py: '3.15'
+            install-options: '3.15 --min=0'
+            bin: 'python.exe'
+            output: 'py315.exe'
+            packages: 'pywin32 psutil'
+          - py: '3.15t'
+            install-options: '3.15t --min=0'
+            bin: 'python3.15t.exe'
+            output: 'py315t.exe'
+            packages: ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up bootstrap python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build prerequisites
+        run: |
+          python -m pip install --upgrade requests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install the target python
+        run: |
+          python install_python.py ${{ matrix.install-options }} --out=${{ env.TARGETDIR }} --force
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & '${{ env.TARGETDIR }}\${{ matrix.bin }}' --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Diagnostics: verify that the bootstrap python from
+          # actions/setup-python still resolves after running the python.org
+          # installer, which may have modified installed pythons.
+          Write-Host "##[group]Bootstrap python diagnostics"
+          Write-Host "pythonLocation: $env:pythonLocation"
+          Write-Host "bootstrap python.exe exists: $(Test-Path "$env:pythonLocation\python.exe")"
+          Get-Command python -All -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "python resolves to: $($_.Source)" }
+          Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WindowsApps" -Filter 'python*' |
+            ForEach-Object { Write-Host "WindowsApps alias: $($_.Name)" }
+          Write-Host "##[endgroup]"
+
+      - name: Install the build packages
+        env:
+          PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
+        run: |
+          $pybin = $env:PYBIN
+          Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
+            Remove-Item -Force
+          & $pybin -m pip install --no-warn-script-location --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The packages are resolved per version: each matrix entry carries
+          # its own requirements, which pip resolves against that version of
+          # python, so different versions can use different packages or
+          # different package versions.
+          & $pybin -m pip install --no-warn-script-location --upgrade ${{ matrix.packages }} setuptools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Install PyInstaller
+          & $pybin -m pip install --no-warn-script-location pyinstaller==6.22.3
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Copy a build hook to PyInstaller to include the cacerts.pem file
+          # for pip.
+          Copy-Item hooks\hook-pip.py "$env:TARGETDIR\Lib\site-packages\PyInstaller\hooks\"
+
+      - name: Build the stand-alone executable
+        timeout-minutes: 60
+        env:
+          PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
+        run: |
+          $pybin = $env:PYBIN
+          # Build the executable, then import all of the bundled modules in
+          # it.  Each module that fails to import in the stand-alone
+          # executable is excluded from the module list, and the executable
+          # is rebuilt, until all of the bundled modules import
+          # successfully.  A module that hangs while importing is identified
+          # by the progress lines written to stderr, excluded the same way,
+          # and the executable is rebuilt.  The exclusions accumulate, so
+          # the loop converges.
+          $excludes = ''
+          $generr = Join-Path $env:RUNNER_TEMP 'pyexe-gen-stderr.txt'
+          $genout = Join-Path $env:RUNNER_TEMP 'pyexe-gen-stdout.txt'
+          $alleerr = Join-Path $env:RUNNER_TEMP 'pyexe-all-stderr.txt'
+          $alleout = Join-Path $env:RUNNER_TEMP 'pyexe-all-stdout.txt'
+          foreach ($attempt in 1..3) {
+            Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
+              Remove-Item -Force
+            # Generate the list of modules we need to import
+            $listargs = @('modules_pyexe.py', 'pyexe.py')
+            if ($excludes) { $listargs += $excludes }
+            $proc = Start-Process -FilePath $pybin -ArgumentList $listargs `
+              -NoNewWindow -PassThru -RedirectStandardOutput $genout `
+              -RedirectStandardError $generr
+            if (-not $proc.WaitForExit(600000)) {
+              # Kill the whole process tree, since the one-file executable
+              # runs a child process that would keep the files locked.
+              $proc.Kill($true)
+              $proc.WaitForExit()
+              $culprit = ([regex]::Matches(
+                (Get-Content $generr -Raw), '\? ([A-Za-z_][\w.]*)'))[-1].Groups[1].Value
+              if ($culprit -in @('encodings', 'importlib')) {
+                Write-Host "##[error]$culprit hung in the module list generation and cannot be excluded"
+                exit 1
+              }
+              Write-Host "##[warning]Excluding $culprit from the module list, since the module list generation hung while importing it"
+              $excludes = if ($excludes) { "$excludes,$culprit" } else { "--exclude=$culprit" }
+              continue
+            }
+            if ($proc.ExitCode -ne 0) {
+              Write-Host '##[error]The module list generation failed:'
+              Get-Content $generr | Select-Object -Last 20
+              exit 1
+            }
+            Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
+              Remove-Item -Force
+            & $pybin -m PyInstaller --onefile pyexe.py --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\rth_subprocess.py --runtime-hook hooks\rth_pip.py --runtime-hook hooks\pyi_rth_multiprocessing.py --icon "$env:TARGETDIR\pythonw.exe"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Copy-Item dist\pyexe.exe ${{ matrix.output }} -Force
+            # Test that all of the bundled modules import in the executable.
+            $proc = Start-Process -FilePath ".\${{ matrix.output }}" `
+              -ArgumentList '--all', '-c', 'pass' -NoNewWindow -PassThru `
+              -RedirectStandardOutput $alleout -RedirectStandardError $alleerr
+            if (-not $proc.WaitForExit(600000)) {
+              # Kill the whole process tree, since the one-file executable
+              # runs a child process that would keep the files locked.
+              $proc.Kill($true)
+              $proc.WaitForExit()
+              $culprit = ([regex]::Matches(
+                (Get-Content $alleerr -Raw), '\? ([A-Za-z_][\w.]*)'))[-1].Groups[1].Value
+              if ($culprit -in @('encodings', 'importlib')) {
+                Write-Host "##[error]$culprit hung in the stand-alone executable and cannot be excluded"
+                exit 1
+              }
+              Write-Host "##[warning]Excluding $culprit from the module list, since importing it hung in the stand-alone executable"
+              $excludes = if ($excludes) { "$excludes,$culprit" } else { "--exclude=$culprit" }
+              continue
+            }
+            if ($proc.ExitCode -ne 0) {
+              Write-Host '##[error]The executable failed while importing the bundled modules:'
+              Get-Content $alleerr | Select-Object -Last 20
+              exit 1
+            }
+            $importout = Get-Content $alleerr -Raw
+            $failed = @([regex]::Matches(
+              $importout, 'Failed to import ([^:\r\n]+):') |
+              ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+            if (-not $failed) {
+              Write-Host 'All of the bundled modules import successfully.'
+              # Save a per-version copy of the module list report, and add a
+              # bundle report to the job summary.
+              $version = '${{ matrix.output }}' -replace '\.exe$', ''
+              Copy-Item modules_pyexe_report.txt "module-list-$version.txt" -Force
+              if ($env:GITHUB_STEP_SUMMARY) {
+                $adjusted = if ($excludes) { $excludes -replace '^--exclude=', '' } else { 'none' }
+                Add-Content $env:GITHUB_STEP_SUMMARY "## Bundle report: ${{ matrix.output }}"
+                Add-Content $env:GITHUB_STEP_SUMMARY ''
+                Add-Content $env:GITHUB_STEP_SUMMARY "Excluded modules after testing the imports: $adjusted"
+                Add-Content $env:GITHUB_STEP_SUMMARY ''
+                Add-Content $env:GITHUB_STEP_SUMMARY '<details><summary>Module list report</summary>'
+                Add-Content $env:GITHUB_STEP_SUMMARY ''
+                Add-Content $env:GITHUB_STEP_SUMMARY '```'
+                Get-Content modules_pyexe_report.txt | Add-Content $env:GITHUB_STEP_SUMMARY
+                Add-Content $env:GITHUB_STEP_SUMMARY '```'
+                Add-Content $env:GITHUB_STEP_SUMMARY ''
+                Add-Content $env:GITHUB_STEP_SUMMARY '</details>'
+              }
+              break
+            }
+            # Exclude each module that failed to import.  Excluding single
+            # modules rather than their top level packages keeps the modules
+            # of the same package that do work.
+            foreach ($module in $failed) {
+              if ($module -in @('encodings', 'importlib')) {
+                Write-Host "##[error]$module failed to import and cannot be excluded: $($failed -join ', ')"
+                exit 1
+              }
+              Write-Host "##[warning]Excluding $module from the bundle, since it failed to import"
+            }
+            $add = $failed -join ','
+            if ($excludes) { $excludes = "$excludes,$add" }
+            else { $excludes = "--exclude=$add" }
+            if ($attempt -eq 3) {
+              Write-Host "##[error]The bundled modules still failed to import after adjusting the packages: $($failed -join ', ')"
+              exit 1
+            }
+          }
+
+      - name: Upload the module list report
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-list-${{ matrix.output }}
+          path: module-list-*.txt
+          if-no-files-found: error
+
+      - name: Report version
+        run: |
+          & '.\${{ matrix.output }}' -VV
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test the stand-alone executable
+        env:
+          PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
+        run: |
+          # Diagnostics: report how python resolves in this step.  The stub
+          # error "Python was not found; run without arguments to install
+          # from the Microsoft Store ..." indicates that bare 'python' is
+          # resolving to the WindowsApps alias instead of the bootstrap
+          # python installed by actions/setup-python.
+          Write-Host "##[group]Python resolution diagnostics"
+          Write-Host "PATH: $env:PATH"
+          Write-Host "pythonLocation: $env:pythonLocation"
+          Write-Host "bootstrap python.exe exists: $(Test-Path "$env:pythonLocation\python.exe")"
+          Get-Command python -All -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "python resolves to: $($_.Source)" }
+          Write-Host "##[endgroup]"
+          # Use the target python for these commands.  The bootstrap python
+          # installed by actions/setup-python cannot be used here: for the
+          # matrix entries matching its version, the python.org installer
+          # run by install_python.py treats the registered toolcache python
+          # as the same product and relocates it to the target directory,
+          # so bare 'python' resolves to the WindowsApps alias afterwards.
+          # This mirrors the AppVeyor test script, which used explicit
+          # pythons for the zipapp and pytest commands.
+          New-Item -ItemType Directory -Force -Path C:\temp | Out-Null
+          Set-Location tests
+          # Install pytest into the target python; it runs the tests both
+          # against the stand-alone executable and against the master
+          # python.  It is installed after the executable was built so that
+          # pytest is not picked up by modules_pyexe.py and bundled.
+          & "$env:PYBIN" -m pip install --no-warn-script-location pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Build a zipapp for our tests.
+          & "$env:PYBIN" -m zipapp --output ..\sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Make sure we only have original files here.
+          git clean -fxd .
+          & "$env:PYBIN" -m pytest -l --cache-clear --exe="..\${{ matrix.output }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # We can test the tests against the master python.  We have to
+          # exclude a few tests that only work on the stand-alone build.
+          # Make sure we only have original files here.
+          git clean -fxd .
+          & "$env:PYBIN" -m pytest -l --cache-clear --exe="$env:PYBIN" -m "not pyexe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload the executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: |
+            pyexe.py
+            ${{ matrix.output }}
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all built executables
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'py*'
+          merge-multiple: true
+          path: artifacts
+
+      - name: Update the pyexe-latest release
+        if: github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view pyexe-latest --repo "$GITHUB_REPOSITORY" || \
+            gh release create pyexe-latest --repo "$GITHUB_REPOSITORY" \
+            --title "Release pyexe-latest" \
+            --notes "The most recent stand-alone Python executables."
+          gh release upload pyexe-latest artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Validate the tag name
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-._a-zA-Z0-9]*)?$' || {
+            echo "Tag '$GITHUB_REF_NAME' is not in vA.B.C format."
+            exit 1
+          }
+
+      - name: Create the tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" artifacts/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Release $GITHUB_REF_NAME" \
+            --notes "Stand-alone Python executables for $GITHUB_REF_NAME."

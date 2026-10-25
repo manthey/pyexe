@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import subprocess
 import sys
@@ -7,8 +8,9 @@ if __name__ == '__main__':  # noqa
     dest = '.'
     instdest = None
     force = False
+    freethreaded = False
     help = False
-    is64 = False
+    is64 = True
     keep = False
     minpoint = 0
     remove = False
@@ -37,6 +39,11 @@ if __name__ == '__main__':  # noqa
             version = arg
         else:
             help = True
+    if version and version.endswith('t'):
+        # A free-threaded build, such as 3.14t.  These are installed from the
+        # same installer as the regular build, using an extra option.
+        freethreaded = True
+        version = version[:-1]
     if help or not version:
         print("""Install the latest revision of a version of python.
 
@@ -44,7 +51,9 @@ Syntax: install_python.py (version) [--32|--64] [--out=(destination directory)]
         [--inst=(installation directory)] [--force]
         [--min=(minimum point release)] [--keep] [--remove]
 
-Specify just the major and minor version, such as 2.7 or 3.6.
+Specify just the major and minor version, such as 3.11, optionally followed
+by a 't' for a free-threaded build, such as 3.14t.
+The 64-bit build is installed by default; use --32 for a 32-bit build.
 --force will overwrite an existing installation file.
 --keep keeps the install file.
 --remove first uninstalls the specified version of python.""")
@@ -52,15 +61,15 @@ Specify just the major and minor version, such as 2.7 or 3.6.
     baseurl = 'https://www.python.org/ftp/python/'
     versionList = requests.get(baseurl).text
     versionList = [part.split('"')[0] for part in versionList.split('<a href="')[1:]]
-    versionList = sorted([(int(ver[len(version) + 1:].strip('/')), ver)
-                          for ver in versionList if ver.startswith(version + '.')],
-                         reverse=True)
+    versionList = sorted(
+        [(int(subver), ver) for subver, ver in
+         [(item[len(version) + 1:].strip('/'), item) for item in versionList
+          if item.startswith(version + '.')]
+         if re.match(r'^\d+$', subver) and int(subver) >= minpoint],
+        reverse=True)
     for subver, ver in versionList:
-        if subver < minpoint:
-            continue
         url = baseurl + ver + 'python-' + version + '.' + str(subver) + (
-            '' if not is64 else ('.amd64' if version.startswith('2') else '-amd64')) + (
-            '.msi' if version.startswith('2') else '.exe')
+            '' if not is64 else '-amd64') + '.exe'
         try:
             response = requests.get(url).content
             if len(response) < 1000000:
@@ -79,14 +88,9 @@ Specify just the major and minor version, such as 2.7 or 3.6.
     if os.path.exists(installer) and not force:
         raise Exception('Path already exists: %s' % installer)
     open(installer, 'wb').write(response)
-    if installer.endswith('.msi'):
-        uncmd = ['msiexec', '/uninstall', installer, '/quiet', '/norestart']
-        cmd = ['msiexec', '/i', installer, '/quiet', '/norestart']
-        altcmd = ['msiexec', '/fa', installer, '/quiet', '/norestart']
-    else:
-        uncmd = [installer, '/quiet', '/uninstall']
-        cmd = [installer, '/quiet']
-        altcmd = [installer, '/quiet', '/repair']
+    uncmd = [installer, '/quiet', '/uninstall']
+    cmd = [installer, '/quiet']
+    altcmd = [installer, '/quiet', '/repair']
     cmdopts = [
         'TargetDir=' + dest, 'AssociateFiles=0', 'CompileAll=0',
         'PrependPath=0', 'Shortcuts=0', 'Include_doc=0', 'Include_dev=1',
@@ -94,6 +98,8 @@ Specify just the major and minor version, such as 2.7 or 3.6.
         'InstallLauncherAllUsers=0', 'Include_lib=1', 'Include_pip=1',
         'Include_symbols=0', 'Include_tcltk=0', 'Include_test=0',
         'Include_tools=0', 'SimpleInstall=1']
+    if freethreaded:
+        cmdopts.append('Include_freethreaded=1')
     if remove:
         print('Remove: ' + ' '.join(uncmd))
         try:
@@ -105,7 +111,9 @@ Specify just the major and minor version, such as 2.7 or 3.6.
         subprocess.check_call(cmd + cmdopts)
     except Exception:
         pass
-    if not os.path.exists(os.path.join(dest, 'python.exe')):
+    if not os.path.exists(os.path.join(
+            dest, 'python%s%s.exe' % (
+                version.replace('.', ''), 't' if freethreaded else ''))):
         print('Update ' + ' '.join(altcmd + cmdopts))
         subprocess.check_call(altcmd + cmdopts)
     print('Done')

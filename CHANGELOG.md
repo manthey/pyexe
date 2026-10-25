@@ -2,10 +2,86 @@
 
 ## Unreleased
 
+### New Features
+
+- Support Python 3.11 through 3.15 in 64-bit builds, plus free-threaded
+  builds for 3.14t and 3.15t.
+- Support the `-P` flag and the `PYTHONSAFEPATH` environment variable.
+- Port to PyInstaller 6, and register the frozen importers with pip's vendored
+  distlib resource finder so pip works in the stand-alone executable.
+
+- Port the continuous integration from AppVeyor to GitHub Actions.
+
+### Changes
+
+- Drop Python 2 support and the bundled `six` module.
+- Drop the obsolete `-Q`, `-t`, and `-3` flags and their help entries.
+- Drop 32-bit builds.  The executables are no longer suffixed with '-64',
+  since only 64-bit builds are made, and install_python.py installs the
+  64-bit build by default (use --32 for a 32-bit build).
+- The module list generation now uses `pkgutil` instead of parsing
+  `help("modules")` output, skips vendored, test, and example directories, and
+  writes a real `modules_pyexe_list.py` module so the `--all` import list can
+  be bundled.
+- `install_python.py` supports installing free-threaded builds by appending a
+  't' to the version, such as `3.14t`, using the installer's
+  `Include_freethreaded` option.
+- Free-threaded builds do not bundle psutil; the psutil tests are skipped for
+  those builds.
+- The build imports all of the bundled modules in the stand-alone executable,
+  and each module that fails to import is excluded from the module list and
+  the executable is rebuilt, so modules that cannot work in the stand-alone
+  executable are not bundled, while the modules of the same package that do
+  work are kept.  The packages installed for the build are resolved per
+  python version.
+- The module list generation writes a report of the bundled modules, the
+  modules excluded for failing to import (with the exceptions), the modules
+  excluded by the static exclusion lists, and any stale exclusion entries.
+  The build job adds the report to the run summary and uploads it as an
+  artifact for each executable.
+- The `venv` module is bundled, the repository's `install_python` helper is
+  excluded from the module list, and the dead `FixTk` and
+  `asyncio.test_utils` exclusion entries were removed.  The pywin32 GUI
+  framework modules were tried in the bundle and excluded again: several
+  of them block forever when imported in the stand-alone executable, in
+  ways that depend on the modules imported before them (the editor module
+  adds a document template to the Pythonwin application at import), so the
+  pywin GUI layer and adodbapi remain excluded.
+- The build detects modules that hang while importing: the module list
+  generation and the bundled import test write the name of each module to
+  stderr before importing it, run under a timeout, and a module whose
+  import hangs is excluded from the module list and the executable is
+  rebuilt, instead of the build blocking forever.
+- The `--all` import list imports `win32ui` before the other modules, so that
+  modules requiring the MFC state it initializes (such as `dde`) can be
+  imported, and each module import is individually guarded: a module that
+  cannot be imported is reported to stderr without preventing the remaining
+  modules from being imported.
+- On Python 3.11+, `-O` and `-OO` are emulated by patching the import system
+  (the legacy `Py_OptimizeFlag` global is no longer consulted after start),
+  and `PYTHONCASEOK` is applied by patching the import system's `_relax_case`.
+  The optimized source loader follows the `source_to_code` signature changes
+  of Python 3.15, which passes the module name to the loader.
+- `PYTHONCASEOK` is ignored when `-E` or `-I` is given, matching Python 3.9+
+  behavior, rather than preserving the earlier behavior where `-E` did not
+  affect `PYTHONCASEOK`.
+- The `-v` and `-b` flags are accepted but cannot be applied on Python 3.11+,
+  since the interpreter no longer consults the legacy flag globals after
+  startup.
+- The module list generation aliases the `distutils` package to
+  `setuptools._distutils`, the same alias that PyInstaller applies in the
+  stand-alone executable, so that the `setuptools._distutils` and
+  `distutils` submodules are collected and bundled.  On Python 3.11, the
+  generation previously used the standard library `distutils` (the
+  `_distutils_hack` finder that setuptools installs drops its redirect once
+  `pip` is imported), so the `setuptools._distutils` submodules were dropped
+  from the bundle, and the `setuptools.command` modules that import them
+  through the `distutils` alias failed to import in the executable.
+
 ### Package Versions
 
-- Python 2.7.16, 3.5.4, 3.6.8, 3.7.4
-- pywin32 225, pip 19.2.3, psutil 5.6.3, setuptools 41.2.0, six 1.12.0
+- Python 3.11.x, 3.12.x, 3.13.x, 3.14.x, 3.14t.x, 3.15.x, 3.15t.x (64-bit)
+- pywin32 312, pip 26.2.2, psutil 7.2.2, setuptools 84.2.1
 
 ## Version 18
 
