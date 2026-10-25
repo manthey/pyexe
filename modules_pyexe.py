@@ -97,6 +97,54 @@ def list_modules():
     # setuptools) add their own vendored directories to sys.path on import,
     # and modules in those directories should not be included.
     basepath = list(sys.path)
+    # In the stand-alone executable, PyInstaller aliases the distutils
+    # package to setuptools._distutils, and the setuptools modules are
+    # written to work with the setuptools distutils.  Make the module list
+    # generation use the same distutils, so that the same modules are
+    # collected and bundled.  Otherwise, on python 3.11, the
+    # setuptools._distutils submodules cannot be imported (the python 3.11
+    # standard library distutils lacks some of the modules that they
+    # require, such as distutils._log), so those modules are dropped from
+    # the module list, and the setuptools.command modules that import them
+    # through the distutils alias fail to import in the stand-alone
+    # executable, where distutils is the setuptools distutils.
+    #
+    # The _distutils_hack finder that setuptools installs redirects
+    # distutils the same way, but importing pip, which is one of the
+    # collected modules, makes the hack clear the aliased distutils modules
+    # and permanently disable its redirect, so that the standard library
+    # distutils is used from then on (the hack ensures the standard library
+    # distutils when running under pip on python 3.11 and earlier).
+    # Instead, use a finder of our own, which always supplies
+    # setuptools._distutils as distutils.
+    try:
+        import setuptools._distutils  # noqa: F401
+    except ImportError:
+        pass
+    else:
+        import importlib.abc
+        import importlib.util
+
+        class DistutilsAliasFinder:
+            """Supply setuptools._distutils as the distutils package."""
+
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname != 'distutils':
+                    return None
+                module = importlib.import_module('setuptools._distutils')
+
+                class loader(importlib.abc.Loader):
+                    def create_module(self, spec):
+                        module.__name__ = 'distutils'
+                        return module
+
+                    def exec_module(self, module):
+                        pass
+
+                return importlib.util.spec_from_loader(
+                    fullname, loader(), origin=module.__file__)
+
+        sys.meta_path.insert(0, DistutilsAliasFinder())
     modules = set()
     for item in walk_packages(basepath):
         modules.add(item[1])

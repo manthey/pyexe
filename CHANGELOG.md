@@ -68,6 +68,15 @@
 - The `-v` and `-b` flags are accepted but cannot be applied on Python 3.11+,
   since the interpreter no longer consults the legacy flag globals after
   startup.
+- The module list generation aliases the `distutils` package to
+  `setuptools._distutils`, the same alias that PyInstaller applies in the
+  stand-alone executable, so that the `setuptools._distutils` and
+  `distutils` submodules are collected and bundled.  On Python 3.11, the
+  generation previously used the standard library `distutils` (the
+  `_distutils_hack` finder that setuptools installs drops its redirect once
+  `pip` is imported), so the `setuptools._distutils` submodules were dropped
+  from the bundle, and the `setuptools.command` modules that import them
+  through the `distutils` alias failed to import in the executable.
 
 ### Package Versions
 
