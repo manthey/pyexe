@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import time
 
 import pytest
@@ -102,6 +103,36 @@ def runPyExeLines(exepath, options=None, input=None, env=None):
     proc._readerthread = readerthread
     out, err = proc.communicate(input)
     return out, err
+
+
+def runPyExeWithoutStdHandles(exepath, options=None, provide=None):
+    """
+    Run the specified exe when the parent process supplies only the listed
+    standard handles, leaving the remaining standard handles invalid, as when
+    the executable is started by a process that does not set up all of the
+    standard streams (such as an older popen2-style parent).
+
+    Enter: exepath: the fixture parameter.
+           options: command line options to pass to the executable.
+           provide: which of 'stdin', 'stdout', and 'stderr' to supply.
+    Exit:  returncode: the exit code of the process.
+           out: stdout from the process, or None if it was not supplied.
+           err: stderr from the process, or None if it was not supplied.
+    """
+    if options is None:
+        options = []
+    if provide is None:
+        provide = []
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESTDHANDLES
+    proc = subprocess.Popen(
+        [exepath] + options,
+        stdin=subprocess.PIPE if 'stdin' in provide else None,
+        stdout=subprocess.PIPE if 'stdout' in provide else None,
+        stderr=subprocess.PIPE if 'stderr' in provide else None,
+        startupinfo=startupinfo)
+    out, err = proc.communicate()
+    return proc.returncode, out, err
 
 
 def clearPyc(basename):
@@ -340,6 +371,31 @@ def testUnbuffered(exepath):
     assert out[1][0] - out[0][0] > 0.5
     out, err = runPyExeLines(exepath, ['-E', '-c', delayed], env={'PYTHONUNBUFFERED': 'true'})
     assert out[1][0] - out[0][0] < 0.5
+
+
+@pytest.mark.skipif(sys.platform != 'win32', reason='Requires Windows handle semantics.')
+def testUnbufferedMissingStdHandles(exepath):
+    # Unbuffered mode reopens the standard streams from their file
+    # descriptors, which must keep working when the parent process does not
+    # supply all of the standard handles (the historical popen2 use case).
+    code = 'import sys;sys.stdout.write("out\\n");sys.stderr.write("err\\n")'
+    returncode, out, err = runPyExeWithoutStdHandles(
+        exepath, ['-u', '-c', code], ['stdout'])
+    assert returncode == 0
+    assert b'out' in out
+    returncode, out, err = runPyExeWithoutStdHandles(
+        exepath, ['-u', '-c', code], ['stderr'])
+    assert returncode == 0
+    assert b'err' in err
+    # The same runs behave the same without -u.
+    returncode, out, err = runPyExeWithoutStdHandles(
+        exepath, ['-c', code], ['stdout'])
+    assert returncode == 0
+    assert b'out' in out
+    returncode, out, err = runPyExeWithoutStdHandles(
+        exepath, ['-c', code], ['stderr'])
+    assert returncode == 0
+    assert b'err' in err
 
 
 def testPythonPath(exepath):

@@ -97,6 +97,9 @@
   script's globals.  A test was added that the ctypes hooks installed by
   PyInstaller keep working after pyexe clears the global namespace (see pull
   request 47).
+- Added a test that unbuffered mode keeps working when the parent process
+  does not supply all of the standard handles (the historical popen2-style
+  use case), behaving the same with and without `-u`.
 
 ### Package Versions
 
