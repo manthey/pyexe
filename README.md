@@ -12,6 +12,53 @@ be included without additional dlls, excepting tkinter.
 See the GitHub Actions workflow (.github/workflows/build.yml) for build
 instructions.
 
+## Development and testing
+
+The test suite runs pyexe.py from a source checkout against a python
+interpreter, plus the pyexe-marked tests that only apply to a built
+stand-alone executable (the CI workflow builds the executables and runs the
+full suite against them).
+
+The simplest way to run the tests is with tox, which creates an isolated
+environment and follows the same recipe as the CI workflow (generate
+`py_version.py` from the git tags with setuptools_scm, build the sample
+zipapp, run pytest):
+
+```bash
+python -m pip install --upgrade tox
+tox
+```
+
+To run the tests manually, install the development dependency group from
+`pyproject.toml`, then run pytest from the `tests` directory (the sample
+files are referenced relative to it).  The tests that install packages with
+pip into the current directory remove what they installed, so no cleanup is
+needed between runs:
+
+```bash
+python -m pip install --upgrade --group dev
+cd tests
+python -m zipapp --output ../sample_zipapp.pyz -p "/usr/bin/env python" sample_zipapp
+python -m pytest -l --cache-clear --exe="/path/to/python" -m "not pyexe"
+```
+
+If a test run is interrupted, the residue of the interrupted run may remain
+in the `tests` directory, and subsequent collection may fail until it is
+removed (the CI workflow removes it with `git clean -fxd .`, which is safe
+there since the checkout is disposable).
+
+Use a python from a full installation (or a built stand-alone executable)
+for `--exe`; a virtual environment's python does not import from the
+executable directory, and the tests skip the checks that do not apply to
+it.  To install a full python.org build for testing or for building the
+executables, use `install_python.py` (it requires the Windows Installer
+service, so it does not work in restricted environments such as some
+sandboxes).
+
+To run the linters and formatters that the pre-commit configuration enforces,
+install the development dependency group and run
+`pre-commit run --all-files`.
+
 ## Installing other modules
 
 Python is most useful with additional modules.  The stand-alone executable can use pip to install modules from pypi to the local directory.  For instance:

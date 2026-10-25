@@ -63,8 +63,17 @@ jobs:
           python-version: '3.12'
       - name: Install build prerequisites
         run: |
-          python -m pip install --upgrade requests
+          python -m pip install --upgrade requests setuptools-scm
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Generate the version module
+        run: |
+          # Generate py_version.py from the git tags with setuptools_scm, so
+          # the stand-alone executable reports the pyexe version (vA.B.C) in
+          # its version report.  For a non-tagged checkout this produces a
+          # dev version such as v19.0.1.dev6+g<hash>.
+          python -m setuptools_scm --force-write-version-files
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Content py_version.py
       - name: Install the target python
         run: |
           python install_python.py ${{ matrix.install-options }} --out=${{ env.TARGETDIR }} --force
@@ -153,7 +162,7 @@ jobs:
             }
             Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
               Remove-Item -Force
-            & $pybin -m PyInstaller --onefile pyexe.py --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\rth_subprocess.py --runtime-hook hooks\rth_pip.py --runtime-hook hooks\pyi_rth_multiprocessing.py --icon "$env:TARGETDIR\pythonw.exe"
+            & $pybin -m PyInstaller --onefile pyexe.py --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --exclude-module setuptools_scm --runtime-hook hooks\rth_subprocess.py --runtime-hook hooks\rth_pip.py --runtime-hook hooks\pyi_rth_multiprocessing.py --icon "$env:TARGETDIR\pythonw.exe"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             Copy-Item dist\pyexe.exe ${{ matrix.output }} -Force
             # Test that all of the bundled modules import in the executable.
