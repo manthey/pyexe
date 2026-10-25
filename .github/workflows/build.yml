@@ -236,7 +236,7 @@ jobs:
           }
 
       - name: Upload the module list report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: module-list-${{ matrix.output }}
           path: module-list-*.txt
@@ -294,7 +294,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload the executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.output }}
           path: |
