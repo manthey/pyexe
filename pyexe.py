@@ -78,9 +78,27 @@ def main():  # noqa
         Enter: details: 0 if part of help, 1 for basic version, 2 for more
                     details.
         """
-        from py_version import Description, Version
-
-        print('%s, Version %s' % (Description, Version))
+        description = 'Stand-Alone Python Interpreter'
+        version = None
+        if not hasattr(sys, 'frozen'):
+            # The stand-alone executables get their version from the generated
+            # py_version module (setuptools_scm writes it from the git tags
+            # during the build).  For source runs, ask setuptools_scm directly
+            # so the version does not depend on running the generation step
+            # first.
+            try:
+                import setuptools_scm
+                version = 'v' + setuptools_scm.get_version(
+                    relative_to=os.path.abspath(__file__))
+            except Exception:
+                version = None
+        if version is None:
+            try:
+                from py_version import Description, Version
+                description, version = Description, Version
+            except ImportError:
+                version = 'unknown'
+        print('%s, Version %s' % (description, version))
         if details > 1:
             print('Python %s' % (sys.version))
             # pywin32 (not available in free-threaded builds)
