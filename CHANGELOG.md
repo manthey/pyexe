@@ -39,17 +39,19 @@
   excluded by the static exclusion lists, and any stale exclusion entries.
   The build job adds the report to the run summary and uploads it as an
   artifact for each executable.
-- Fewer modules are manually excluded from the module list.  The `venv`
-  module and most of the pywin32 modules that were excluded for historical
-  reasons (the pywin debugger, dialog, editor, framework, scintilla, and
-  tools modules, and adodbapi) are now bundled, since a module that fails
-  to import is excluded automatically.  Only the modules that launch the
-  Pythonwin application (`pywin.framework.startup`,
-  `pywin.framework.intpyapp`, and `start_pythonwin`), which would block
-  forever, and the axdebug modules, which need an unavailable dll, remain
-  excluded.  The repository's `install_python` helper is also excluded from
-  the module list, and the dead `FixTk` and `asyncio.test_utils` exclusion
-  entries were removed.
+- The `venv` module is bundled, the repository's `install_python` helper is
+  excluded from the module list, and the dead `FixTk` and
+  `asyncio.test_utils` exclusion entries were removed.  The pywin32 GUI
+  framework modules were tried in the bundle and excluded again: several
+  of them block forever when imported in the stand-alone executable, in
+  ways that depend on the modules imported before them (the editor module
+  adds a document template to the Pythonwin application at import), so the
+  pywin GUI layer and adodbapi remain excluded.
+- The build detects modules that hang while importing: the module list
+  generation and the bundled import test write the name of each module to
+  stderr before importing it, run under a timeout, and a module whose
+  import hangs is excluded from the module list and the executable is
+  rebuilt, instead of the build blocking forever.
 - The `--all` import list imports `win32ui` before the other modules, so that
   modules requiring the MFC state it initializes (such as `dde`) can be
   imported, and each module import is individually guarded: a module that

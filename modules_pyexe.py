@@ -26,9 +26,21 @@ ExcludeModules = [
     'turtledemo', 'tcl', 'tk',
     # These would fail to be imported by the tests
     'idlelib', 'win32traceutil',
-    # Importing these launches the Pythonwin GUI application, which blocks
-    # forever waiting for the message loop.
-    'pywin.framework.intpyapp', 'pywin.framework.startup', 'start_pythonwin',
+    # These cause the import machinery to block forever in the stand-alone
+    # executable, in ways that depend on the modules that were imported
+    # before them (measured with the pywin32 312 modules): the editor module
+    # adds a document template to the Pythonwin application at import, and
+    # the other modules import it or similar GUI machinery.  adodbapi also
+    # blocks in some contexts.
+    'adodbapi',
+    'pywin.debugger', 'pywin.dialogs.ideoptions',
+    'pywin.framework.dbgcommands', 'pywin.framework.editor',
+    'pywin.framework.interact', 'pywin.framework.intpyapp',
+    'pywin.framework.startup', 'pywin.framework.stdin',
+    'pywin.framework.winout', 'pywin.scintilla', 'pywin.tools.TraceCollector',
+    # Importing start_pythonwin launches the Pythonwin GUI application, which
+    # blocks forever while waiting for the message loop.
+    'start_pythonwin',
     # The axdebug modules cannot work, since the axdebug dll is not available.
     'win32com.axdebug.debugger', 'win32com.axdebug.dump',
     'win32com.axscript.client.debug',
@@ -207,13 +219,17 @@ the module list is written to stdout.""")
         # Guard each import individually, so that a module that cannot be
         # imported in the stand-alone executable is reported to stderr
         # without preventing the remaining bundled modules from being
-        # imported.
+        # imported.  Also write the name of each module to stderr before it
+        # is imported, so that a module that hangs on import can be
+        # identified by the last name written.
         imports = ('\n' + ''.join([
+            '        sys.stderr.write("? ' + item + '\\r")\n'
+            '        sys.stderr.flush()\n'
             '        try:\n'
-            '            import %s\n'
+            '            import ' + item + '\n'
             '        except BaseException as _exception:\n'
-            '            sys.stderr.write("Failed to import %s: %%r\\n" %% _exception)\n'
-            '            sys.stderr.flush()\n' % (item, item)
+            '            sys.stderr.write("Failed to import ' + item + ': %r\\n" % _exception)\n'
+            '            sys.stderr.flush()\n'
             for item in modules])).encode('utf8')
         data = data.split(head, 1)[0] + head + imports + tail + data.split(tail, 1)[1]
         open(pyexePath, 'wb').write(data)

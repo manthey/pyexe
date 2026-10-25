@@ -114,6 +114,7 @@ jobs:
           Copy-Item hooks\hook-pip.py "$env:TARGETDIR\Lib\site-packages\PyInstaller\hooks\"
 
       - name: Build the stand-alone executable
+        timeout-minutes: 60
         env:
           PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
         run: |
@@ -122,31 +123,77 @@ jobs:
           # it.  Each module that fails to import in the stand-alone
           # executable is excluded from the module list, and the executable
           # is rebuilt, until all of the bundled modules import
-          # successfully.  The exclusions accumulate, so the loop converges.
+          # successfully.  A module that hangs while importing is identified
+          # by the progress lines written to stderr, excluded the same way,
+          # and the executable is rebuilt.  The exclusions accumulate, so
+          # the loop converges.
           $excludes = ''
+          $generr = Join-Path $env:RUNNER_TEMP 'pyexe-gen-stderr.txt'
+          $genout = Join-Path $env:RUNNER_TEMP 'pyexe-gen-stdout.txt'
+          $alleerr = Join-Path $env:RUNNER_TEMP 'pyexe-all-stderr.txt'
+          $alleout = Join-Path $env:RUNNER_TEMP 'pyexe-all-stdout.txt'
           foreach ($attempt in 1..3) {
             Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
               Remove-Item -Force
             # Generate the list of modules we need to import
-            $listargs = @('pyexe.py')
+            $listargs = @('modules_pyexe.py', 'pyexe.py')
             if ($excludes) { $listargs += $excludes }
-            & $pybin modules_pyexe.py @listargs
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $proc = Start-Process -FilePath $pybin -ArgumentList $listargs `
+              -NoNewWindow -PassThru -RedirectStandardOutput $genout `
+              -RedirectStandardError $generr
+            if (-not $proc.WaitForExit(600000)) {
+              # Kill the whole process tree, since the one-file executable
+              # runs a child process that would keep the files locked.
+              $proc.Kill($true)
+              $proc.WaitForExit()
+              $culprit = ([regex]::Matches(
+                (Get-Content $generr -Raw), '\? ([A-Za-z_][\w.]*)'))[-1].Groups[1].Value
+              if ($culprit -in @('encodings', 'importlib')) {
+                Write-Host "##[error]$culprit hung in the module list generation and cannot be excluded"
+                exit 1
+              }
+              Write-Host "##[warning]Excluding $culprit from the module list, since the module list generation hung while importing it"
+              $excludes = if ($excludes) { "$excludes,$culprit" } else { "--exclude=$culprit" }
+              continue
+            }
+            if ($proc.ExitCode -ne 0) {
+              Write-Host '##[error]The module list generation failed:'
+              Get-Content $generr | Select-Object -Last 20
+              exit 1
+            }
             Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
               Remove-Item -Force
             & $pybin -m PyInstaller --onefile pyexe.py --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --runtime-hook hooks\rth_subprocess.py --runtime-hook hooks\rth_pip.py --runtime-hook hooks\pyi_rth_multiprocessing.py --icon "$env:TARGETDIR\pythonw.exe"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             Copy-Item dist\pyexe.exe ${{ matrix.output }} -Force
             # Test that all of the bundled modules import in the executable.
-            $importout = & ".\${{ matrix.output }}" --all -c pass 2>&1 |
-              ForEach-Object { "$_" }
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "##[error]The executable failed while importing the bundled modules: $($importout -join "`n")"
+            $proc = Start-Process -FilePath ".\${{ matrix.output }}" `
+              -ArgumentList '--all', '-c', 'pass' -NoNewWindow -PassThru `
+              -RedirectStandardOutput $alleout -RedirectStandardError $alleerr
+            if (-not $proc.WaitForExit(600000)) {
+              # Kill the whole process tree, since the one-file executable
+              # runs a child process that would keep the files locked.
+              $proc.Kill($true)
+              $proc.WaitForExit()
+              $culprit = ([regex]::Matches(
+                (Get-Content $alleerr -Raw), '\? ([A-Za-z_][\w.]*)'))[-1].Groups[1].Value
+              if ($culprit -in @('encodings', 'importlib')) {
+                Write-Host "##[error]$culprit hung in the stand-alone executable and cannot be excluded"
+                exit 1
+              }
+              Write-Host "##[warning]Excluding $culprit from the module list, since importing it hung in the stand-alone executable"
+              $excludes = if ($excludes) { "$excludes,$culprit" } else { "--exclude=$culprit" }
+              continue
+            }
+            if ($proc.ExitCode -ne 0) {
+              Write-Host '##[error]The executable failed while importing the bundled modules:'
+              Get-Content $alleerr | Select-Object -Last 20
               exit 1
             }
-            $failed = @($importout |
-              Where-Object { $_ -match '^Failed to import ([^:]+):' } |
-              ForEach-Object { $matches[1] })
+            $importout = Get-Content $alleerr -Raw
+            $failed = @([regex]::Matches(
+              $importout, 'Failed to import ([^:\r\n]+):') |
+              ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
             if (-not $failed) {
               Write-Host 'All of the bundled modules import successfully.'
               # Save a per-version copy of the module list report, and add a
@@ -179,7 +226,7 @@ jobs:
               }
               Write-Host "##[warning]Excluding $module from the bundle, since it failed to import"
             }
-            $add = ($failed | Sort-Object -Unique) -join ','
+            $add = $failed -join ','
             if ($excludes) { $excludes = "$excludes,$add" }
             else { $excludes = "--exclude=$add" }
             if ($attempt -eq 3) {
