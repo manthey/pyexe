@@ -7,6 +7,8 @@
 - Support Python 3.11 through 3.15 in 64-bit builds, plus free-threaded
   builds for 3.14t and 3.15t.
 - Support the `-P` flag and the `PYTHONSAFEPATH` environment variable.
+- Support the `PYTHONIOENCODING` environment variable, in the `encoding:errors`
+  form, to set the encoding and error handler of the standard streams.
 - Port to PyInstaller 6, and register the frozen importers with pip's vendored
   distlib resource finder so pip works in the stand-alone executable.
 

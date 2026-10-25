@@ -49,6 +49,29 @@ def main():  # noqa
             value = 1
         return max(currentValue, value)
 
+    def set_stdio_encoding(ioencoding):
+        """
+        Set the encoding and the error handler of stdin, stdout, and stderr,
+        based on the PYTHONIOENCODING environment variable, which is in the
+        form "encoding:errors", where either part may be omitted.  An unknown
+        encoding is an error, since the python executable refuses to start
+        with one; an unknown error handler is only reported when the streams
+        are used, just as with the python executable.
+        """
+        import codecs
+        encoding, _, errors = ioencoding.partition(':')
+        if encoding:
+            codecs.lookup(encoding)
+        for stream in (sys.stdin, sys.stdout, sys.stderr):
+            if stream is None or stream.closed or not hasattr(stream, 'reconfigure'):
+                continue
+            if encoding and errors:
+                stream.reconfigure(encoding=encoding, errors=errors)
+            elif encoding:
+                stream.reconfigure(encoding=encoding)
+            elif errors:
+                stream.reconfigure(errors=errors)
+
     def print_version(details=1):
         """
         Print the current version.
@@ -146,6 +169,7 @@ def main():  # noqa
     Help = False
     Interactive = None
     InteractiveArgv = None
+    IoEncoding = None
     Isolated = False
     NoSiteFlag = False
     Optimize = 0
@@ -301,7 +325,8 @@ PYTHONPATH   : ';'-separated list of directories prefixed to the
                default module search path.  The result is sys.path.
 PYTHONSAFEPATH: don't automatically prepend a potentially unsafe path to
                sys.path unless '-P' is given.
-PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
+PYTHONCASEOK : ignore case in 'import' statements (Windows).
+PYTHONIOENCODING: encoding[:errors] used for stdin/stdout/stderr.""")
         sys.exit(0)
     if PrintVersion:
         print_version(PrintVersion)
@@ -318,6 +343,8 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
             sys.dont_write_bytecode = True
         if Interactive is not True and os.environ.get('PYTHONINSPECT'):
             Interactive = 'check'
+        if os.environ.get('PYTHONIOENCODING'):
+            IoEncoding = os.environ.get('PYTHONIOENCODING')
         Optimize = get_env_flag(Optimize, 'PYTHONOPTIMIZE')
         if os.environ.get('PYTHONPATH'):
             sys.path[0:0] = os.environ.get('PYTHONPATH').split(os.pathsep)
@@ -402,6 +429,8 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
         sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', bufsize)
         sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
         sys.stderr = os.fdopen(sys.stderr.fileno(), 'a+', bufsize)
+    if IoEncoding:
+        set_stdio_encoding(IoEncoding)
     if not NoSiteFlag:
         import site
         site.main()
@@ -439,6 +468,8 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
                 if not Unbuffered:
                     sys.stdout = os.fdopen(sys.stdout.fileno(), 'a+', bufsize)
                     sys.stderr = os.fdopen(sys.stderr.fileno(), 'a+', bufsize)
+                    if IoEncoding:
+                        set_stdio_encoding(IoEncoding)
             banner = 'Python %s' % sys.version
             if not NoSiteFlag:
                 banner += '\nType "help", "copyright", "credits" or "license" for more information.'
