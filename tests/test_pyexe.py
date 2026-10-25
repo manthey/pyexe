@@ -355,6 +355,44 @@ def testRunFileGlobals(exepath):
     assert 'sys' not in out and 'RunFile' not in out
 
 
+def testCtypesAfterGlobalsAreCleared(exepath):
+    # pyexe clears the global namespace before running a script or a command.
+    # PyInstaller patches ctypes to look for libraries in sys._MEIPASS, and
+    # historically those patches referenced a _frozen_name variable that was
+    # bound in the main script's globals, so using ctypes after the globals
+    # were cleared raised NameError (see pull request 47).  PyInstaller now
+    # installs its ctypes patches from a module, so the patched loaders keep
+    # working.  This test fails with a NameError if that regresses.
+    code = """import ctypes
+try:
+    ctypes.CDLL('definitely_not_a_real_dll_xyz')
+except NameError as err:
+    print('NameError: %s' % (err))
+except OSError as err:
+    print('OSError')
+"""
+    path = 'sample_ctypes_frozen_name.py'
+    try:
+        open(path, 'wt').write(code)
+        out, err = runPyExe(exepath, [path])
+        assert 'OSError' in out
+        assert 'NameError' not in out and 'NameError' not in err
+    finally:
+        os.unlink(path)
+    out, err = runPyExe(exepath, input=code)
+    assert 'OSError' in out
+    assert 'NameError' not in out and 'NameError' not in err
+    # Command line arguments cannot contain newlines on Windows, so a one
+    # line command is used for the '-c' path, where the error is reported on
+    # stderr rather than caught.  The unfrozen python raises
+    # FileNotFoundError, while the frozen executable raises OSError with a
+    # message from PyInstaller.
+    out, err = runPyExe(exepath, [
+        '-c', "import ctypes; ctypes.CDLL('definitely_not_a_real_dll_xyz')"])
+    assert 'OSError' in err or 'FileNotFoundError' in err
+    assert 'NameError' not in out and 'NameError' not in err
+
+
 def testByteCodeFlag(exepath):
     clearPyc('sample_print_path.py')
     out, err = runPyExe(exepath, ['-i'], input='import sample_print_path.py')
