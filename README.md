@@ -38,6 +38,11 @@ Although the stand-alone Python attempts to have the same features as a normally
 - `PYTHONCASEOK` is honored, and ignored when `-E` or `-I` is given, matching
   Python 3.9+.  It is applied by patching the import system, since PyInstaller
   starts the interpreter in isolated mode.
+- `PYTHONIOENCODING` is honored, in the form `encoding:errors`, and ignored
+  when `-E` or `-I` is given.  It changes the encoding and error handler of
+  `sys.stdin`, `sys.stdout`, and `sys.stderr` after the interpreter has
+  started, which is equivalent to how the python executable applies it at
+  startup.
 - `-I` and `-E` are applied to pyexe's own environment handling, but the interpreter itself has already been started in a mode that ignores most environment variables.
-- Not all environment variables are handled, such as: `PYTHONIOENCODING`, `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`, `PYTHONMALLOC`, `PYTHONDEVMODE`.  Some of these are ignored; some are used and cannot be suppressed with `-E` or `-I`.  Many of these could be handled properly with additional work.
+- Not all environment variables are handled, such as: `PYTHONFAULTHANDLER`, `PYTHONLEGACYWINDOWSFSENCODING`, `PYTHONLEGACYWINDOWSSTDIO`, `PYTHONMALLOC`, `PYTHONDEVMODE`.  Some of these are ignored; some are used and cannot be suppressed with `-E` or `-I`.  Many of these could be handled properly with additional work.
 - `PYTHONSAFEPATH` is honored, and `-P` suppresses the automatic prepending of the script directory or current directory to `sys.path`.

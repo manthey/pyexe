@@ -350,6 +350,42 @@ def testStartup(exepath, pyversion):
     assert '>>>' in err and '-->' not in err
 
 
+def testIOEncoding(exepath):
+    command = 'import sys; print(sys.stdout.encoding, sys.stdout.errors)'
+    out, err = runPyExe(exepath, ['-c', command],
+                        env={'PYTHONIOENCODING': 'latin-1'})
+    assert 'iso8859-1' in out or 'latin-1' in out
+    out, err = runPyExe(exepath, ['-c', command],
+                        env={'PYTHONIOENCODING': 'latin-1:replace'})
+    assert 'iso8859-1 replace' in out or 'latin-1 replace' in out
+    out, err = runPyExe(exepath, ['-c', command],
+                        env={'PYTHONIOENCODING': ':backslashreplace'})
+    assert 'backslashreplace' in out
+    # The -E and -I flags ignore the environment variable.
+    out, err = runPyExe(exepath, ['-E', '-c', command],
+                        env={'PYTHONIOENCODING': 'latin-1'})
+    assert 'iso8859-1' not in out and 'latin-1' not in out
+    out, err = runPyExe(exepath, ['-I', '-c', command],
+                        env={'PYTHONIOENCODING': 'latin-1'})
+    assert 'iso8859-1' not in out and 'latin-1' not in out
+    # The encoding and error handler apply when writing text that cannot be
+    # encoded with the default encoding.
+    out, err = runPyExe(exepath, ['-c', "import sys; sys.stdout.write('caf\\u20ac\\n')"],
+                        env={'PYTHONIOENCODING': 'latin-1:backslashreplace'})
+    assert 'caf\\u20ac' in out
+    # stdin and stderr get the same encoding.
+    out, err = runPyExe(exepath, ['-c', 'import sys; print(sys.stdin.encoding)'],
+                        env={'PYTHONIOENCODING': 'latin-1'})
+    assert 'iso8859-1' in out or 'latin-1' in out
+    out, err = runPyExe(exepath, ['-c', 'import sys; print(sys.stderr.encoding)'],
+                        env={'PYTHONIOENCODING': 'latin-1'})
+    assert 'iso8859-1' in out or 'latin-1' in out
+    # An unknown encoding is an error, like in the python executable.
+    out, err = runPyExe(exepath, ['-c', 'import sys'],
+                        env={'PYTHONIOENCODING': 'bogus-encoding'})
+    assert 'unknown encoding' in err
+
+
 def testRunFileGlobals(exepath):
     out, err = runPyExe(exepath, ['sample_print_globals.py'])
     assert 'sys' not in out and 'RunFile' not in out
