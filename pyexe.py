@@ -408,7 +408,7 @@ PYTHONCASEOK : ignore case in 'import' statements (Windows).""")
     # Generate the globals/locals environment
     globenv = {}
     for key in list(globals().keys()):
-        if key.startswith('_') and key != '_frozen_name':
+        if key.startswith('_'):
             globenv[key] = globals()[key]
     if RunFile:
         run_file(RunFile, RunFileArgv, SkipFirstLine, globenv)

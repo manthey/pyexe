@@ -77,6 +77,11 @@
   `pip` is imported), so the `setuptools._distutils` submodules were dropped
   from the bundle, and the `setuptools.command` modules that import them
   through the `distutils` alias failed to import in the executable.
+- The `_frozen_name` special case when generating the global environment for
+  a run file was removed: PyInstaller no longer binds that name in the main
+  script's globals.  A test was added that the ctypes hooks installed by
+  PyInstaller keep working after pyexe clears the global namespace (see pull
+  request 47).
 
 ### Package Versions
 
