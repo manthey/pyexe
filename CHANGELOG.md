@@ -156,7 +156,7 @@
 
 ### Build
 
-- Don't try to use upx.  It wan't actually being used before, and it doesn't work on appveyor with Python 3.x.
+- Don't try to use upx.  It wasn't actually being used before, and it doesn't work on appveyor with Python 3.x.
 
 ## Version 13
 
@@ -228,7 +228,7 @@
 ## Version 10
 
 - Upgraded to Python 2.7.9
-- Added psutil 2.1.3 
+- Added psutil 2.1.3
 - Added support for the `-m` option.
 - Turned off the optimization flag when building.  Having it on interferes with some modules (such as sympy) which rely on docstring manipulation.
 
@@ -275,5 +275,3 @@
 ## Version 1
 
 - initial release
-
-

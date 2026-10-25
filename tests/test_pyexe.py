@@ -1,8 +1,9 @@
 import os
-import pytest
 import re
 import subprocess
 import time
+
+import pytest
 
 
 @pytest.fixture
@@ -51,10 +52,10 @@ def runPyExe(exepath, options=None, input=None, env=None):
     proc = subprocess.Popen(
         cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, env=cmdenv)
-    if input and bytes != str:
+    if input and bytes is not str:
         input = input.encode('utf8')
     out, err = proc.communicate(input)
-    if bytes != str:
+    if bytes is not str:
         out = out.decode('utf8')
         err = err.decode('utf8')
     return out, err
@@ -110,7 +111,7 @@ def clearPyc(basename):
         if os.path.exists(root):
             for filename in os.listdir(root):
                 if (filename.startswith(os.path.splitext(basename)[0] + '.') and
-                        (filename.endswith('.pyc') or filename.endswith('.pyo'))):
+                        (filename.endswith(('.pyc', '.pyo')))):
                     os.unlink(os.path.join(root, filename))
                     count += 1
     return count
@@ -224,7 +225,8 @@ def testSympyFromPip(exepath):
     out, err = runPyExe(exepath, [
         '-m', 'pip', 'install', '--no-cache-dir', '--target', '.',
         '--upgrade', 'sympy'])
-    assert 'Successfully installed' in out and 'sympy' in out
+    assert 'Successfully installed' in out
+    assert 'sympy' in out
     out, err = runPyExe(exepath, input="""import sympy
 x = sympy.Symbol('x')
 result = sympy.simplify(1/x + (x*sympy.sin(x) - 1)/x)
@@ -237,7 +239,8 @@ def testRequestsPip(exepath):
     out, err = runPyExe(exepath, [
         '-m', 'pip', 'install', '--no-cache-dir', '--target', '.',
         '--upgrade', 'requests'])
-    assert 'Successfully installed' in out and 'requests' in out
+    assert 'Successfully installed' in out
+    assert 'requests' in out
     out, err = runPyExe(exepath, input="""import requests
 print(requests.get.__doc__)
 """)
@@ -278,7 +281,7 @@ print(sum([add(x, x + 1) for x in range(10)]))
 
 
 def testHyphen(exepath):
-    out, err = runPyExe(exepath, ['-', 'param1', '\'param2\''], input="""import sys
+    out, err = runPyExe(exepath, ['-', 'param1', "'param2'"], input="""import sys
 print(sys.argv)
 """)
     assert """['-', 'param1', "'param2'"]""" in out
@@ -313,10 +316,10 @@ def testUnbuffered(exepath):
 def testPythonPath(exepath):
     out, err = runPyExe(exepath, ['sample_print_path.py'],
                         env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
-    assert '\'C:\\\\Temp\'' in out
+    assert "'C:\\\\Temp'" in out
     out, err = runPyExe(exepath, ['-E', 'sample_print_path.py'],
                         env={'PYTHONPATH': 'C:\\Temp;C:\\nowhere'})
-    assert '\'C:\\\\Temp\'' not in out
+    assert "'C:\\\\Temp'" not in out
 
 
 def testIsolateFlag(exepath, pyversion):
@@ -325,10 +328,12 @@ def testIsolateFlag(exepath, pyversion):
         localrepr = repr(local)
         out, err = runPyExe(exepath, ['sample_print_path.py'],
                             env={'PYTHONPATH': 'C:\\Temp'})
-        assert localrepr in out and '\'C:\\\\Temp\'' in out
+        assert localrepr in out
+        assert "'C:\\\\Temp'" in out
         out, err = runPyExe(exepath, ['-I', 'sample_print_path.py'],
                             env={'PYTHONPATH': 'C:\\Temp'})
-        assert localrepr not in out and '\'C:\\\\Temp\'' not in out
+        assert localrepr not in out
+        assert "'C:\\\\Temp'" not in out
 
 
 def testQuietFlag(exepath, pyversion):
@@ -341,13 +346,16 @@ def testQuietFlag(exepath, pyversion):
 
 def testStartup(exepath, pyversion):
     out, err = runPyExe(exepath, ['-i'], input='print("here")')
-    assert '>>>' in err and '-->' not in err
+    assert '>>>' in err
+    assert '-->' not in err
     out, err = runPyExe(exepath, ['-i'], input='print("here")',
                         env={'PYTHONSTARTUP': 'sample_startup.py'})
-    assert '>>>' not in err and '-->' in err
+    assert '>>>' not in err
+    assert '-->' in err
     out, err = runPyExe(exepath, ['-i', '-E'], input='print("here")',
                         env={'PYTHONSTARTUP': 'sample_startup.py'})
-    assert '>>>' in err and '-->' not in err
+    assert '>>>' in err
+    assert '-->' not in err
 
 
 def testIOEncoding(exepath):
@@ -388,7 +396,8 @@ def testIOEncoding(exepath):
 
 def testRunFileGlobals(exepath):
     out, err = runPyExe(exepath, ['sample_print_globals.py'])
-    assert 'sys' not in out and 'RunFile' not in out
+    assert 'sys' not in out
+    assert 'RunFile' not in out
 
 
 def testCtypesAfterGlobalsAreCleared(exepath):
@@ -409,15 +418,17 @@ except OSError as err:
 """
     path = 'sample_ctypes_frozen_name.py'
     try:
-        open(path, 'wt').write(code)
+        open(path, 'w').write(code)
         out, err = runPyExe(exepath, [path])
         assert 'OSError' in out
-        assert 'NameError' not in out and 'NameError' not in err
+        assert 'NameError' not in out
+        assert 'NameError' not in err
     finally:
         os.unlink(path)
     out, err = runPyExe(exepath, input=code)
     assert 'OSError' in out
-    assert 'NameError' not in out and 'NameError' not in err
+    assert 'NameError' not in out
+    assert 'NameError' not in err
     # Command line arguments cannot contain newlines on Windows, so a one
     # line command is used for the '-c' path, where the error is reported on
     # stderr rather than caught.  The unfrozen python raises
@@ -426,7 +437,8 @@ except OSError as err:
     out, err = runPyExe(exepath, [
         '-c', "import ctypes; ctypes.CDLL('definitely_not_a_real_dll_xyz')"])
     assert 'OSError' in err or 'FileNotFoundError' in err
-    assert 'NameError' not in out and 'NameError' not in err
+    assert 'NameError' not in out
+    assert 'NameError' not in err
 
 
 def testByteCodeFlag(exepath):
@@ -446,45 +458,49 @@ def testByteCodeFlag(exepath):
 def testOptimizeFlag(exepath):
     clearPyc('sample_optimize.py')
     out, err = runPyExe(exepath, [
-        '-c', 'import sample_optimize;'
-        'print(sample_optimize.test_optimize());'
-        'print(sample_optimize.test_optimize.__doc__)'])
+        '-c', ('import sample_optimize;'
+               'print(sample_optimize.test_optimize());'
+               'print(sample_optimize.test_optimize.__doc__)')])
     assert 'AssertionError' in err
     clearPyc('sample_optimize.py')
     out, err = runPyExe(exepath, [
-        '-O', '-c', 'import sample_optimize;'
-        'print(sample_optimize.test_optimize());'
-        'print(sample_optimize.test_optimize.__doc__)'])
-    assert 'True' in out and 'AssertionError' not in err
+        '-O', '-c', ('import sample_optimize;'
+                     'print(sample_optimize.test_optimize());'
+                     'print(sample_optimize.test_optimize.__doc__)')])
+    assert 'True' in out
+    assert 'AssertionError' not in err
     assert 'This function' in out
     clearPyc('sample_optimize.py')
     out, err = runPyExe(exepath, [
-        '-O', '-O', '-c', 'import sample_optimize;'
-        'print(sample_optimize.test_optimize());'
-        'print(sample_optimize.test_optimize.__doc__)'])
-    assert 'True' in out and 'AssertionError' not in err
+        '-O', '-O', '-c', ('import sample_optimize;'
+                           'print(sample_optimize.test_optimize());'
+                           'print(sample_optimize.test_optimize.__doc__)')])
+    assert 'True' in out
+    assert 'AssertionError' not in err
     assert 'This function' not in out
     clearPyc('sample_optimize.py')
     out, err = runPyExe(exepath, [
-        '-c', 'import sample_optimize;'
-        'print(sample_optimize.test_optimize());'
-        'print(sample_optimize.test_optimize.__doc__)'],
+        '-c', ('import sample_optimize;'
+               'print(sample_optimize.test_optimize());'
+               'print(sample_optimize.test_optimize.__doc__)')],
         env={'PYTHONOPTIMIZE': '2'})
-    assert 'True' in out and 'AssertionError' not in err
+    assert 'True' in out
+    assert 'AssertionError' not in err
     assert 'This function' not in out
     clearPyc('sample_optimize.py')
     out, err = runPyExe(exepath, [
-        '-c', 'import sample_optimize;'
-        'print(sample_optimize.test_optimize());'
-        'print(sample_optimize.test_optimize.__doc__)'],
+        '-c', ('import sample_optimize;'
+               'print(sample_optimize.test_optimize());'
+               'print(sample_optimize.test_optimize.__doc__)')],
         env={'PYTHONOPTIMIZE': '-1'})
-    assert 'True' in out and 'AssertionError' not in err
+    assert 'True' in out
+    assert 'AssertionError' not in err
     assert 'This function' in out
     clearPyc('sample_optimize.py')
     out, err = runPyExe(exepath, [
-        '-E', '-c', 'import sample_optimize;'
-        'print(sample_optimize.test_optimize());'
-        'print(sample_optimize.test_optimize.__doc__)'],
+        '-E', '-c', ('import sample_optimize;'
+                     'print(sample_optimize.test_optimize());'
+                     'print(sample_optimize.test_optimize.__doc__)')],
         env={'PYTHONOPTIMIZE': '2'})
     assert 'AssertionError' in err
 
@@ -497,20 +513,25 @@ def testVerboseFlag(exepath, pyversion):
         import pytest
         pytest.skip('The -v flag cannot be applied after start on Python 3.11+')
     out, err = runPyExe(exepath, ['-c', 'import bisect'])
-    assert 'bisect' not in err and '# cleanup' not in err
+    assert 'bisect' not in err
+    assert '# cleanup' not in err
     out, err = runPyExe(exepath, ['-v', '-c', 'import bisect'])
-    assert 'bisect' in err and '# cleanup' in err
+    assert 'bisect' in err
+    assert '# cleanup' in err
     assert 'clear[2]' not in err
     out, err = runPyExe(exepath, ['-v', '-v', '-c', 'import bisect'])
-    assert 'bisect' in err and '# cleanup' in err
+    assert 'bisect' in err
+    assert '# cleanup' in err
     assert 'clear[2]' in err
     out, err = runPyExe(exepath, ['-c', 'import bisect'],
                         env={'PYTHONVERBOSE': '2'})
-    assert 'bisect' in err and '# cleanup' in err
+    assert 'bisect' in err
+    assert '# cleanup' in err
     assert 'clear[2]' in err
     out, err = runPyExe(exepath, ['-E', '-c', 'import bisect'],
                         env={'PYTHONVERBOSE': '2'})
-    assert 'bisect' not in err and '# cleanup' not in err
+    assert 'bisect' not in err
+    assert '# cleanup' not in err
 
 
 def testBytesWarningFlag(exepath, pyversion):
@@ -564,10 +585,12 @@ print(add(1, 2, 3))"""
         assert 'inconsistent use of tabs' not in err
         out, err = runPyExe(exepath, ['-t'], input=withtabs)
         assert '6' in out
-        assert 'inconsistent use of tabs' in err and 'TabError' not in err
+        assert 'inconsistent use of tabs' in err
+        assert 'TabError' not in err
         out, err = runPyExe(exepath, ['-t', '-t'], input=withtabs)
         assert '6' not in out
-        assert 'inconsistent use of tabs' in err and 'TabError' in err
+        assert 'inconsistent use of tabs' in err
+        assert 'TabError' in err
 
 
 def testPy3Flag(exepath, pyversion):
@@ -577,9 +600,11 @@ raise old()
 """
     if pyversion < (3, ):
         out, err = runPyExe(exepath, input=oldclassexc)
-        assert '__main__.old:' in err and 'BaseException' not in err
+        assert '__main__.old:' in err
+        assert 'BaseException' not in err
         out, err = runPyExe(exepath, ['-3'], input=oldclassexc)
-        assert '__main__.old:' in err and 'BaseException' in err
+        assert '__main__.old:' in err
+        assert 'BaseException' in err
 
 
 def testWarningsOption(exepath):
@@ -592,15 +617,20 @@ with zipfile.ZipFile(buf, 'a') as z:
   z.writestr('name', 'data2')
 """
     out, err = runPyExe(exepath, input=zipwarn)
-    assert 'Duplicate name: \'name\'' in err and 'Traceback' not in err
+    assert "Duplicate name: 'name'" in err
+    assert 'Traceback' not in err
     out, err = runPyExe(exepath, ['-Werror'], input=zipwarn)
-    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    assert "Duplicate name: 'name'" in err
+    assert 'Traceback' in err
     out, err = runPyExe(exepath, ['-W', 'error'], input=zipwarn)
-    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    assert "Duplicate name: 'name'" in err
+    assert 'Traceback' in err
     out, err = runPyExe(exepath, input=zipwarn, env={'PYTHONWARNINGS': 'error'})
-    assert 'Duplicate name: \'name\'' in err and 'Traceback' in err
+    assert "Duplicate name: 'name'" in err
+    assert 'Traceback' in err
     out, err = runPyExe(exepath, ['-E'], input=zipwarn, env={'PYTHONWARNINGS': 'error'})
-    assert 'Duplicate name: \'name\'' in err and 'Traceback' not in err
+    assert "Duplicate name: 'name'" in err
+    assert 'Traceback' not in err
 
 
 def testPythonCaseOK(exepath):
@@ -642,7 +672,7 @@ def testBuildPathNotInTracebacks(exepath, haspsutil):
 def testImportFromExePath(exepath):
     modpath = os.path.join(os.path.dirname(exepath), 'mod_exepath.py')
     try:
-        open(modpath, 'wt').write('foo = "bar"')
+        open(modpath, 'w').write('foo = "bar"')
         out, err = runPyExe(exepath, ['-c', 'import mod_exepath;print(mod_exepath.foo)'])
         assert 'bar' in out
     finally:
@@ -654,7 +684,7 @@ def testImportFromExePath(exepath):
     except Exception:
         pass
     try:
-        open(modpath, 'wt').write('foo = "baz"')
+        open(modpath, 'w').write('foo = "baz"')
         out, err = runPyExe(exepath, ['-c', 'import mod_libsite;print(mod_libsite.foo)'])
         assert 'baz' in out
     finally:
@@ -694,8 +724,8 @@ threading.Thread(target=threaded_func).start()
 
 def testSourceWithEncoding(exepath, pyversion):
     import codecs
-    helloworld = u'\u4f60\u597d\uff0c\u4e16\u754c'
-    code = u"""import codecs
+    helloworld = '\u4f60\u597d\uff0c\u4e16\u754c'
+    code = """import codecs
 import sys
 
 sys.stdout = codecs.getwriter("utf-8")(
@@ -708,7 +738,7 @@ print(%r)\n""" % (helloworld, helloworld)
             ('cp950', b''),
             ('gbk', b''),
             # Note that python source code cannot be in utf-16 or utf-32
-            ):
+    ):
         path = 'sample_encoding_%s.py' % enc
         if enc.endswith('-bom'):
             enc = enc[:-4]

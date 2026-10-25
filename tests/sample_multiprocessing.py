@@ -3,7 +3,6 @@ import random
 import sys
 import time
 
-
 maxProcesses = 2
 numJobs = 10
 
@@ -20,10 +19,10 @@ if __name__ == '__main__':
     results = multiprocessing.Array('d', range(numJobs))
     multiprocessing.set_executable(sys.executable)
     jobs = []
-    for i in range(numJobs):
+    for _i in range(numJobs):
         jobs.append((
             [random.random() for j in range(random.randint(10, 50))],
-            random.random()
+            random.random(),
         ))
     procs = []
     for idx, job in enumerate(jobs):

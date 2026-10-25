@@ -1,21 +1,17 @@
+---
 name: build
-
 on:
   push:
     branches: ['**']
-    tags: ['v*.*.*']
+    tags: [v*.*.*]
   pull_request:
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 permissions:
   contents: write
-
 env:
-  TARGETDIR: 'C:\pyexe_target'
-
+  TARGETDIR: C:\pyexe_target
 jobs:
   build:
     name: ${{ matrix.output }}
@@ -25,54 +21,50 @@ jobs:
       matrix:
         include:
           - py: '3.11'
-            install-options: '3.11 --min=0'
-            bin: 'python.exe'
-            output: 'py311.exe'
-            packages: 'pywin32 psutil'
+            install-options: 3.11 --min=0
+            bin: python.exe
+            output: py311.exe
+            packages: pywin32 psutil
           - py: '3.12'
-            install-options: '3.12 --min=0'
-            bin: 'python.exe'
-            output: 'py312.exe'
-            packages: 'pywin32 psutil'
+            install-options: 3.12 --min=0
+            bin: python.exe
+            output: py312.exe
+            packages: pywin32 psutil
           - py: '3.13'
-            install-options: '3.13 --min=0'
-            bin: 'python.exe'
-            output: 'py313.exe'
-            packages: 'pywin32 psutil'
+            install-options: 3.13 --min=0
+            bin: python.exe
+            output: py313.exe
+            packages: pywin32 psutil
           - py: '3.14'
-            install-options: '3.14 --min=0'
-            bin: 'python.exe'
-            output: 'py314.exe'
-            packages: 'pywin32 psutil'
-          - py: '3.14t'
-            install-options: '3.14t --min=0'
-            bin: 'python3.14t.exe'
-            output: 'py314t.exe'
+            install-options: 3.14 --min=0
+            bin: python.exe
+            output: py314.exe
+            packages: pywin32 psutil
+          - py: 3.14t
+            install-options: 3.14t --min=0
+            bin: python3.14t.exe
+            output: py314t.exe
             packages: ''
           - py: '3.15'
-            install-options: '3.15 --min=0'
-            bin: 'python.exe'
-            output: 'py315.exe'
-            packages: 'pywin32 psutil'
-          - py: '3.15t'
-            install-options: '3.15t --min=0'
-            bin: 'python3.15t.exe'
-            output: 'py315t.exe'
+            install-options: 3.15 --min=0
+            bin: python.exe
+            output: py315.exe
+            packages: pywin32 psutil
+          - py: 3.15t
+            install-options: 3.15t --min=0
+            bin: python3.15t.exe
+            output: py315t.exe
             packages: ''
-
     steps:
       - uses: actions/checkout@v7
-
       - name: Set up bootstrap python
         uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-
       - name: Install build prerequisites
         run: |
           python -m pip install --upgrade requests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
       - name: Install the target python
         run: |
           python install_python.py ${{ matrix.install-options }} --out=${{ env.TARGETDIR }} --force
@@ -90,7 +82,6 @@ jobs:
           Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WindowsApps" -Filter 'python*' |
             ForEach-Object { Write-Host "WindowsApps alias: $($_.Name)" }
           Write-Host "##[endgroup]"
-
       - name: Install the build packages
         env:
           PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
@@ -112,7 +103,6 @@ jobs:
           # Copy a build hook to PyInstaller to include the cacerts.pem file
           # for pip.
           Copy-Item hooks\hook-pip.py "$env:TARGETDIR\Lib\site-packages\PyInstaller\hooks\"
-
       - name: Build the stand-alone executable
         timeout-minutes: 60
         env:
@@ -234,19 +224,16 @@ jobs:
               exit 1
             }
           }
-
       - name: Upload the module list report
         uses: actions/upload-artifact@v7
         with:
           name: module-list-${{ matrix.output }}
           path: module-list-*.txt
           if-no-files-found: error
-
       - name: Report version
         run: |
           & '.\${{ matrix.output }}' -VV
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
       - name: Test the stand-alone executable
         env:
           PYBIN: ${{ env.TARGETDIR }}\${{ matrix.bin }}
@@ -292,7 +279,6 @@ jobs:
           git clean -fxd .
           & "$env:PYBIN" -m pytest -l --cache-clear --exe="$env:PYBIN" -m "not pyexe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
       - name: Upload the executable
         uses: actions/upload-artifact@v7
         with:
@@ -300,19 +286,18 @@ jobs:
           path: |
             pyexe.py
             ${{ matrix.output }}
-
   release:
     needs: build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref,
+      'refs/tags/v'))
     runs-on: ubuntu-latest
     steps:
       - name: Download all built executables
         uses: actions/download-artifact@v8
         with:
-          pattern: 'py*'
+          pattern: py*
           merge-multiple: true
           path: artifacts
-
       - name: Update the pyexe-latest release
         if: github.ref == 'refs/heads/master'
         env:
@@ -323,7 +308,6 @@ jobs:
             --title "Release pyexe-latest" \
             --notes "The most recent stand-alone Python executables."
           gh release upload pyexe-latest artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
-
       - name: Validate the tag name
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -331,12 +315,11 @@ jobs:
             echo "Tag '$GITHUB_REF_NAME' is not in vA.B.C format."
             exit 1
           }
-
       - name: Create the tagged release
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
+        run: |-
           gh release create "$GITHUB_REF_NAME" artifacts/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "Release $GITHUB_REF_NAME" \

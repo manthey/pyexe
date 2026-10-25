@@ -1,0 +1,147 @@
+---
+# Initially run
+#   pre-commit install
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+        # tests/sample_skip_header.py is intentionally invalid python (its
+        # first line is skipped by pyexe's -x option, see testSkipHeader).
+        exclude: ^tests/sample_skip_header\.py$
+      - id: check-builtin-literals
+        # See the check-ast exclusion note.
+        exclude: ^tests/sample_skip_header\.py$
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      # - id: check-symlinks
+      - id: check-toml
+      - id: check-xml
+      - id: check-yaml
+      - id: debug-statements
+        # See the check-ast exclusion note.
+        exclude: ^tests/sample_skip_header\.py$
+      - id: destroyed-symlinks
+      - id: detect-private-key
+      - id: double-quote-string-fixer
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: forbid-new-submodules
+      - id: mixed-line-ending
+      # - id: no-commit-to-branch
+      - id: trailing-whitespace
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-no-eval
+      - id: python-no-log-warn
+      - id: rst-backticks
+      - id: rst-directive-colons
+      - id: rst-inline-touching-normal
+      - id: text-unicode-replacement-char
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-markup
+    rev: v1.0.1
+    hooks:
+      - id: rst-linter
+        files: README.rst
+        name: rst-linter of README.rst
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-regex
+          - '(^\s*"image/\S+": ".*)'
+          - --ignore-words-list
+          - hist,indext,pixelx,thex,subtile,slippy,fram,thet
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.22.0
+    hooks:
+      - id: pyupgrade
+        args: [--py310-plus, --keep-percent-format]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi, jupyter]
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.3.2
+    hooks:
+      - id: autopep8
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.4.1
+    hooks:
+      - id: flake8
+        args: [--config=.flake8]
+  - repo: https://github.com/pycqa/isort
+    rev: 9.0.2
+    hooks:
+      - id: isort
+        name: isort (python)
+  - repo: https://github.com/asottile/yesqa
+    rev: v1.5.0
+    hooks:
+      - id: yesqa
+  - repo: https://github.com/lyz-code/yamlfix
+    rev: 1.19.1
+    hooks:
+      - id: yamlfix
+        args: [-c, pyproject.toml]
+        exclude: model_card.yaml
+  - repo: local
+    hooks:
+      - id: hadolint
+        args:
+          - --ignore
+          - DL3003
+          - --ignore
+          - DL3008
+          - --ignore
+          - DL3013
+          - --ignore
+          - DL3016
+          - --ignore
+          - DL3059
+          - --ignore
+          - DL4006
+          - --ignore
+          - SC2028
+          - --ignore
+          - SC2046
+          - --ignore
+          - SC2086
+        name: hadolint (local binary, docker fallback)
+        description: Run hadolint via local binary if present, docker fallback; skip
+          when neither is available
+        entry: |-
+          python3 -c "import os, shutil, subprocess, sys
+          a = sys.argv[1:]  # pre-commit merges config args + filenames here
+          fl = [f for f in a if not os.path.isfile(f)]
+          fs = [f for f in a if os.path.isfile(f)]
+          if not fs:
+            sys.exit(0)
+          h = shutil.which('hadolint')
+          if h:
+            cmd = [h] + fl + ['--'] + fs
+            sys.exit(subprocess.run(cmd).returncode)
+          d = shutil.which('docker')
+          if not d:
+            print('hadolint: neither hadolint nor docker found on PATH, skipping.', file=sys.stderr)
+            sys.exit(0)
+          cmd = [d, 'run', '--rm', '-v', f'{os.getcwd()}:/work', '-i', '--entrypoint', 'hadolint', 'ghcr.io/hadolint/hadolint'] + fl + ['--'] + fs
+          sys.exit(subprocess.run(cmd).returncode)"
+        language: system
+        types_or: [dockerfile]
+  - repo: https://github.com/manthey/agent-reformat
+    rev: v1.0.39
+    hooks:
+      - id: agent-reformat
+        args: [--fix]

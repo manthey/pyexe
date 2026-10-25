@@ -12,7 +12,8 @@ else:
         _frozen_module = sys.modules.get('pyimod02_importers')
         if _frozen_module is None:
             try:
-                from PyInstaller.loader import pyimod02_importers as _frozen_module
+                from PyInstaller.loader import \
+                    pyimod02_importers as _frozen_module
             except ImportError:
                 _frozen_module = None
         if _frozen_module is not None:

@@ -6,5 +6,4 @@ import multiprocessing.spawn
 
 multiprocessing.spawn.WINEXE = False
 multiprocessing.freeze_support = multiprocessing.spawn.freeze_support
-
 forking.WINEXE = False

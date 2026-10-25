@@ -3,19 +3,18 @@ import subprocess
 import sys
 
 
-class _pyexePopen(subprocess.Popen):
+class pyexePopen(subprocess.Popen):
     def __init__(self, args, bufsize=-1, executable=None, stdin=None,
                  stdout=None, stderr=None, preexec_fn=None, close_fds=True,
                  shell=False, cwd=None, env=None, *arglist, **kwargs):
-        with self._prepare_env(args, executable, env):
-            super(_pyexePopen, self).__init__(
+        with self.prepare_env(args, executable, env):
+            super().__init__(
                 args, bufsize, executable, stdin, stdout, stderr,
                 preexec_fn, close_fds, shell, cwd, env, *arglist, **kwargs)
 
     @contextlib.contextmanager
-    def _prepare_env(self, args, executable, env):
+    def prepare_env(self, args, executable, env):
         import os
-        import sys
 
         inparam = False
         inenv = False
@@ -50,4 +49,4 @@ class _pyexePopen(subprocess.Popen):
                 os.putenv('_MEIPASS2', inenv or '')
 
 
-subprocess.Popen = _pyexePopen
+subprocess.Popen = pyexePopen

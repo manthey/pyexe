@@ -9,5 +9,5 @@ def threaded_func():
     print(globalVar)
 
 
-globalVar = "Global Variable"
+globalVar = 'Global Variable'
 threading.Thread(target=threaded_func).start()

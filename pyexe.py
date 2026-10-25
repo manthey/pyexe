@@ -10,14 +10,13 @@ def main():  # noqa
     import warnings
 
     AllModules = False
-
     if len(sys.argv) == 1 and not hasattr(sys, 'frozen'):
         AllModules = True
     if not AllModules and sys.argv[:2][-1] != '--all':
         pass
     else:
         # IMPORT ALL MODULES
-        import modules_pyexe_list  # noqa, this is the output of modules_pyexe
+        import modules_pyexe_list  # , this is the output of modules_pyexe
         print(dir(modules_pyexe_list))  # for installers to include submodules
         # END IMPORT ALL MODULES
 
@@ -76,10 +75,10 @@ def main():  # noqa
         """
         Print the current version.
 
-        Enter: details: 0 if part of help, 1 for basic verison, 2 for more
+        Enter: details: 0 if part of help, 1 for basic version, 2 for more
                     details.
         """
-        from py_version import Version, Description
+        from py_version import Description, Version
 
         print('%s, Version %s' % (Description, Version))
         if details > 1:
@@ -188,7 +187,7 @@ def main():  # noqa
     WarningOptions = []
     skip = 0
     sys.dont_write_bytecode = False
-    for i in range(1, len(sys.argv)):  # noqa
+    for i in range(1, len(sys.argv)):
         if skip:
             skip -= 1
             continue
@@ -200,8 +199,8 @@ def main():  # noqa
                 elif let == 'B':
                     sys.dont_write_bytecode = True
                 elif let == 'c':
-                    RunCommand = sys.argv[i+1+skip]
-                    RunCommandArgv = ['-c'] + sys.argv[i+2+skip:]
+                    RunCommand = sys.argv[i + 1 + skip]
+                    RunCommandArgv = ['-c'] + sys.argv[i + 2 + skip:]
                     skip = len(sys.argv)
                 elif let == 'd':
                     # We don't have to do anything for this flag, since we
@@ -216,9 +215,9 @@ def main():  # noqa
                 elif let == 'I':
                     UseEnvironment = False
                     Isolated = True
-                elif let == 'm' and i+1 < len(sys.argv):
-                    RunModule = sys.argv[i+1+skip]
-                    RunModuleArgv = sys.argv[i+1+skip:]
+                elif let == 'm' and i + 1 < len(sys.argv):
+                    RunModule = sys.argv[i + 1 + skip]
+                    RunModuleArgv = sys.argv[i + 1 + skip:]
                     skip = len(sys.argv)
                 elif let == 'O':
                     Optimize += 1
@@ -246,9 +245,8 @@ def main():  # noqa
                     if arg.startswith('-' + let) and len(arg) > 2:
                         WarningOptions.append(arg[2:])
                         break
-                    else:
-                        WarningOptions.append(sys.argv[i+1+skip])
-                        skip += 1
+                    WarningOptions.append(sys.argv[i + 1 + skip])
+                    skip += 1
                 elif let == 'x':
                     SkipFirstLine = True
                 elif let == 'X':
@@ -256,8 +254,7 @@ def main():  # noqa
                     # implementation doesn't have such options.
                     if arg.startswith('-' + let) and len(arg) > 2:
                         break
-                    else:
-                        skip += 1
+                    skip += 1
                 else:
                     Help = True
         elif arg == '--check-hash-based-pycs' or arg.startswith('--check-hash-based-pycs='):
@@ -273,13 +270,13 @@ def main():  # noqa
             PrintVersion += 1
         elif arg == '-':
             Interactive = 'check'
-            InteractiveArgv = ['-'] + sys.argv[i+1+skip:]
+            InteractiveArgv = ['-'] + sys.argv[i + 1 + skip:]
             skip = len(sys.argv)
         elif arg.startswith('-'):
             Help = True
         elif not RunFile:
-            RunFile = sys.argv[i+skip]
-            RunFileArgv = sys.argv[i+skip:]
+            RunFile = sys.argv[i + skip]
+            RunFileArgv = sys.argv[i + skip:]
             skip = len(sys.argv)
     if Help:
         print_version(0)
@@ -336,7 +333,7 @@ PYTHONIOENCODING: encoding[:errors] used for stdin/stdout/stderr.""")
     # paths, but PyInstaller changes them to the expanded paths.
     sys.path[0:0] = [
         os.path.abspath(os.path.dirname(sys.executable)),
-        os.path.abspath(os.path.join(os.path.dirname(sys.executable), 'Lib', 'site-packages'))
+        os.path.abspath(os.path.join(os.path.dirname(sys.executable), 'Lib', 'site-packages')),
     ]
     if UseEnvironment:
         if os.environ.get('PYTHONDONTWRITEBYTECODE'):
@@ -364,9 +361,9 @@ PYTHONIOENCODING: encoding[:errors] used for stdin/stdout/stderr.""")
     # python executable: PYTHONCASEOK is ignored when -E or -I is given.
     import importlib._bootstrap_external
     if UseEnvironment and os.environ.get('PYTHONCASEOK'):
-        importlib._bootstrap_external._relax_case = lambda: True  # noqa
+        importlib._bootstrap_external._relax_case = lambda: True
     else:
-        importlib._bootstrap_external._relax_case = lambda: False  # noqa
+        importlib._bootstrap_external._relax_case = lambda: False
     if VerboseFlag:
         ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_VerboseFlag').value = VerboseFlag
     if Optimize:
@@ -415,10 +412,10 @@ PYTHONIOENCODING: encoding[:errors] used for stdin/stdout/stderr.""")
         sys.path_importer_cache.clear()
     if WarningBytes:
         for idx, f in enumerate(warnings.filters):
-            if f[2] == BytesWarning:
+            if f[2] is BytesWarning:
                 warnings.filters[idx] = tuple(
                     ['default' if WarningBytes == 1 else 'error'] + list(f)[1:])
-        if not any([f for f in warnings.filters if f[2] == BytesWarning]):
+        if not any(f for f in warnings.filters if f[2] is BytesWarning):
             warnings.filterwarnings(
                 'default' if WarningBytes == 1 else 'error', category=BytesWarning)
         ctypes.c_int.in_dll(ctypes.pythonapi, 'Py_BytesWarningFlag').value = WarningBytes

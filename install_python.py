@@ -1,8 +1,9 @@
 import os
 import re
-import requests
 import subprocess
 import sys
+
+import requests
 
 if __name__ == '__main__':  # noqa
     dest = '.'
@@ -78,7 +79,8 @@ The 64-bit build is installed by default; use --32 for a 32-bit build.
         except Exception:
             continue
     if len(response) < 1000000:
-        raise Exception('Failed to find install file')
+        msg = 'Failed to find install file'
+        raise Exception(msg)
     print('Size: %d, url: %s' % (len(response), url))
     if instdest is None:
         instdest = os.path.split(dest)[0]

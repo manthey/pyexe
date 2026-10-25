@@ -1,0 +1,99 @@
+include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
+exclude = [
+    "build",
+    "*/web_client/*",
+    "*/*egg*/*",
+    # Intentionally invalid python; pyexe is tested skipping its header line.
+    "tests/sample_skip_header.py",
+]
+lint.ignore = [
+    "B017",  # assert raises exception
+    "B026",  # star arg unpacking after keyword arg
+    "B904",  # raise without from inside except
+    "C408",  # unnecessary collection call (would prohibit dict())
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    "D200",
+    "D203",
+    "D205",
+    "D212",
+    "D213",
+    "D400",
+    "D401",
+    "D404",
+    "D415",
+    "E741",  # ambiguous variable name
+    "NPY002",  # numpy-legacy-random
+    "PT011",  # pytest-raises-too-broad
+    "PT012",  # pytest-raises-with-multiple-statements
+    "PT017",  # pytest-assert-in-except
+    "PT030",
+    "RET503",  # implict-return on function that can return non-none
+    "RET504",  # unncessary-assign before return
+    "SIM102",
+    "SIM103",
+    "SIM105",
+    "SIM108",
+    "SIM110",
+    "SIM113",
+    "SIM114",
+    "SIM115",
+    "SIM401",
+    # "SIM105",
+    "T201",
+    "T203",
+]
+line-length = 100
+lint.select = [
+    "ASYNC",
+    "B",  # bugbear
+    "C4",
+    "C90",  # mccabe
+    "COM",
+    "D",  # pydocstyle
+    "DTZ",
+    "E",  # pycodestyle errors
+    "EM",
+    "EXE",
+    "F",  # pyflakes
+    "G",
+    # "I",  # isort
+    "ISC",
+    # "N",  # pep8-naming
+    "NPY",
+    "PIE",
+    "PT",
+    "PYI",
+    "Q",  # flake8-quotes
+    "RET",
+    "RSE",
+    "SIM",
+    "T",  # print statements
+    "W",  # pycodestyle warnings
+    "YTT",  # flake8-2020
+]
+
+[format]
+docstring-code-format = true
+
+[lint.per-file-ignores]
+# allow "useless expressions" as it shows output
+# allow non-top level imports
+# allow long lines
+".circleci/dcm4chee/*.py" = ["T201", "T203"]
+"docs/*.ipynb" = ["B018", "E402", "E501", "T201", "T203"]
+"docs/*.py" = ["E501", "T201", "T203"]
+"examples/*" = ["T201", "T203"]
+"test/*" = ["T201", "T203"]
+
+[lint.flake8-quotes]
+inline-quotes = "single"
+
+[lint.mccabe]
+max-complexity = 14

@@ -68,8 +68,7 @@ def walk_packages(path=None, prefix=''):
                 subpath = list(getattr(module, '__path__', []))
             except Exception:
                 subpath = []
-            for item in walk_packages(subpath, name + '.'):
-                yield item
+            yield from walk_packages(subpath, name + '.')
 
 
 def excluded_by_path(module):
@@ -85,18 +84,11 @@ def excluded_by_path(module):
     return any(part in ExcludeParts for part in parts)
 
 
-def list_modules():
+def install_distutils_alias_finder():
     """
-    Get a list of all modules and submodules in the system that we can import.
-
-    Exit:  modules: a list of modules.
-           report: a list of lines reporting what was included and excluded,
-                   and why.
+    Install a sys.meta_path finder that supplies setuptools._distutils as
+    the distutils package.
     """
-    # Snapshot sys.path before importing anything; some packages (such as
-    # setuptools) add their own vendored directories to sys.path on import,
-    # and modules in those directories should not be included.
-    basepath = list(sys.path)
     # In the stand-alone executable, PyInstaller aliases the distutils
     # package to setuptools._distutils, and the setuptools modules are
     # written to work with the setuptools distutils.  Make the module list
@@ -120,39 +112,51 @@ def list_modules():
     try:
         import setuptools._distutils  # noqa: F401
     except ImportError:
-        pass
-    else:
-        import importlib.abc
-        import importlib.util
+        return
+    import importlib.abc
+    import importlib.util
 
-        class DistutilsAliasFinder:
-            """Supply setuptools._distutils as the distutils package."""
+    class DistutilsAliasFinder:
+        """Supply setuptools._distutils as the distutils package."""
 
-            def find_spec(self, fullname, path=None, target=None):
-                if fullname != 'distutils':
-                    return None
-                module = importlib.import_module('setuptools._distutils')
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname != 'distutils':
+                return None
+            module = importlib.import_module('setuptools._distutils')
 
-                class loader(importlib.abc.Loader):
-                    def create_module(self, spec):
-                        module.__name__ = 'distutils'
-                        return module
+            class loader(importlib.abc.Loader):
+                def create_module(self, spec):
+                    module.__name__ = 'distutils'
+                    return module
 
-                    def exec_module(self, module):
-                        pass
+                def exec_module(self, module):
+                    pass
 
-                return importlib.util.spec_from_loader(
-                    fullname, loader(), origin=module.__file__)
+            return importlib.util.spec_from_loader(
+                fullname, loader(), origin=module.__file__)
 
-        sys.meta_path.insert(0, DistutilsAliasFinder())
+    sys.meta_path.insert(0, DistutilsAliasFinder())
+
+
+def list_modules():
+    """
+    Get a list of all modules and submodules in the system that we can import.
+
+    Exit:  modules: a list of modules.
+           report: a list of lines reporting what was included and excluded,
+                   and why.
+    """
+    # Snapshot sys.path before importing anything; some packages (such as
+    # setuptools) add their own vendored directories to sys.path on import,
+    # and modules in those directories should not be included.
+    basepath = list(sys.path)
+    install_distutils_alias_finder()
     modules = set()
     for item in walk_packages(basepath):
         modules.add(item[1])
     collected = sorted(modules)
-
     # Remove modules with dashes in their names
     modules = [item for item in collected if '-' not in item]
-
     # Remove modules starting with values in ExcludeModules or containing a
     # module component in ExcludeParts
     regex = re.compile(
@@ -169,7 +173,6 @@ def list_modules():
     if 'win32ui' in modules:
         modules.remove('win32ui')
         modules.insert(0, 'win32ui')
-
     failures = []
     for item in modules[:]:
         try:
@@ -180,7 +183,7 @@ def list_modules():
                 continue
             sys.stderr.write('? %s\r' % item)
             sys.stderr.flush()
-            mod = importlib.import_module(item)  # noqa
+            mod = importlib.import_module(item)
             if excluded_by_path(mod):
                 raise ImportError('Excluded path: %s' % getattr(mod, '__file__', ''))
             sys.stderr.write('+ %s\n' % item)
@@ -192,7 +195,6 @@ def list_modules():
                 item, type(exception).__name__, exception))
             sys.stderr.write('- %s\n' % item)
             sys.stderr.flush()
-
     report = ['Bundled modules: %d' % len(modules),
               'Excluded because they failed to import: %d' % len(failures)]
     report.extend('    %s' % failure for failure in failures)
