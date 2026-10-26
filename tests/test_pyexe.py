@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -133,6 +134,56 @@ def runPyExeWithoutStdHandles(exepath, options=None, provide=None):
         startupinfo=startupinfo)
     out, err = proc.communicate()
     return proc.returncode, out, err
+
+
+def runPyExePopen2(exepath, options=None, commands=()):
+    """
+    Run the specified exe driven interactively through open pipes, in the
+    manner of popen2: the parent keeps the stdin pipe open, writes commands,
+    and reads the responses, and never sends an end-of-file until the child
+    exits.  This is how, for instance, octave's popen2 drives the
+    stand-alone interpreter.
+
+    Enter: exepath: the fixture parameter.
+           options: command line options to pass to the executable.
+           commands: a list of lines of input to write to stdin, with the
+               last one expected to make the executable exit.
+    Exit:  returncode: the exit code of the process.
+           out: stdout from the process.
+           err: stderr from the process.
+    """
+    if options is None:
+        options = []
+    proc = subprocess.Popen(
+        [exepath] + options, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    out = []
+    err = []
+
+    def reader(fh, sink):
+        while True:
+            data = fh.readline()
+            if not len(data):
+                break
+            sink.append(data)
+        fh.close()
+
+    threads = [
+        threading.Thread(target=reader, args=(fh, sink))
+        for fh, sink in ((proc.stdout, out), (proc.stderr, err))]
+    for thread in threads:
+        thread.daemon = True
+        thread.start()
+    for command in commands:
+        proc.stdin.write(command.encode('utf8'))
+        proc.stdin.flush()
+        time.sleep(0.5)
+    proc.stdin.close()
+    proc.wait(timeout=30)
+    for thread in threads:
+        thread.join(timeout=30)
+    return proc.returncode, b''.join(out).decode('utf8'), \
+        b''.join(err).decode('utf8')
 
 
 def clearPyc(basename):
@@ -371,6 +422,19 @@ def testUnbuffered(exepath):
     assert out[1][0] - out[0][0] > 0.5
     out, err = runPyExeLines(exepath, ['-E', '-c', delayed], env={'PYTHONUNBUFFERED': 'true'})
     assert out[1][0] - out[0][0] < 0.5
+
+
+def testPopen2(exepath):
+    # Issue #25: the Python 3.5 and 3.6 executables failed when driven
+    # through pipes as with popen2, raising a ValueError from os.fdopen in
+    # the handling of the standard streams.  The interactive interpreter
+    # should work over open pipes, with and without unbuffered mode.
+    commands = ['print(40 + 2)\n', 'exit()\n']
+    for options in (['-i'], ['-u', '-i']):
+        returncode, out, err = runPyExePopen2(exepath, options, commands)
+        assert returncode == 0
+        assert '42' in out
+        assert 'ValueError' not in out + err
 
 
 @pytest.mark.skipif(sys.platform != 'win32', reason='Requires Windows handle semantics.')
