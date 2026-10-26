@@ -100,10 +100,14 @@
 - Added a test that unbuffered mode keeps working when the parent process
   does not supply all of the standard handles (the historical popen2-style
   use case), behaving the same with and without `-u`.
-- Added a test that the stand-alone interpreter driven interactively through
-  open pipes, as with `popen2` (issue 25), works with and without `-u`, and
-  no longer raises a `ValueError` from `os.fdopen` as the Python 3.5 and
-  3.6 executables did.
+- Added a test that no non-dunder underscore names (such as the historical
+  `_frozen_name` helper) leak from pyexe or its build-time patching into the
+  globals of user code run as a script, from `-c`, or from stdin.
+- The global environment generation for user code now only propagates dunder
+  names: the PyInstaller bootloader binds `_pyi_main_co` in the main script's
+  globals, and the pip runtime hook left `_frozen_module`, `_cls_name`, and
+  `_cls` there, and all of them were passed on to user code.  The pip runtime
+  hook now also removes its temporaries from the shared `__main__` namespace.
 
 ### Package Versions
 

@@ -449,10 +449,15 @@ PYTHONIOENCODING: encoding[:errors] used for stdin/stdout/stderr.""")
     if not NoSiteFlag:
         import site
         site.main()
-    # Generate the globals/locals environment
+    # Generate the globals/locals environment.  Only dunder names are part of
+    # the curated global environment.  Any non-dunder underscore name in our
+    # globals is a leaked internal helper (historically the _frozen_name
+    # helper bound by PyInstaller; now _pyi_main_co from the PyInstaller
+    # bootloader and temporaries from the runtime hooks, which share our
+    # module namespace), and must never be visible to user code.
     globenv = {}
     for key in list(globals().keys()):
-        if key.startswith('_'):
+        if key.startswith('__'):
             globenv[key] = globals()[key]
     if RunFile:
         run_file(RunFile, RunFileArgv, SkipFirstLine, globenv)

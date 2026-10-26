@@ -592,6 +592,30 @@ except OSError as err:
     assert 'NameError' not in err
 
 
+def testNoInternalNamesLeakIntoGlobals(exepath):
+    # pyexe passes a curated global environment to user code, so internal
+    # helper names must never be visible to user scripts.  Historically,
+    # PyInstaller bound a _frozen_name helper in the main script's globals,
+    # and a proposed workaround (the shshzi-master branch) would have added a
+    # _setup_ctypes helper that also needed an exception in the global
+    # environment generation.  Any non-dunder underscore name in user code's
+    # globals is exactly that kind of leaked internal helper, so check that
+    # there are none, in each way that user code can be run.
+    code = ('print(sorted(k for k in globals() '
+            "if k.startswith('_') and not k.startswith('__')))")
+    path = 'sample_print_underscore_globals.py'
+    try:
+        open(path, 'w').write(code)
+        out, err = runPyExe(exepath, [path])
+        assert '[]' in out, (out, err)
+    finally:
+        os.unlink(path)
+    out, err = runPyExe(exepath, input=code)
+    assert '[]' in out, (out, err)
+    out, err = runPyExe(exepath, ['-c', code])
+    assert '[]' in out, (out, err)
+
+
 def testByteCodeFlag(exepath):
     clearPyc('sample_print_path.py')
     out, err = runPyExe(exepath, ['-i'], input='import sample_print_path.py')
