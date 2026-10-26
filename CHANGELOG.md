@@ -100,6 +100,10 @@
 - Added a test that unbuffered mode keeps working when the parent process
   does not supply all of the standard handles (the historical popen2-style
   use case), behaving the same with and without `-u`.
+- Added a test that the stand-alone interpreter driven interactively through
+  open pipes, as with `popen2` (issue 25), works with and without `-u`, and
+  no longer raises a `ValueError` from `os.fdopen` as the Python 3.5 and
+  3.6 executables did.
 
 ### Package Versions
 
