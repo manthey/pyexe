@@ -9,6 +9,17 @@ def main():  # noqa
     import sys
     import warnings
 
+    setuptoolsBlocker = globals().pop('_setuptools_import_blocker', None)
+    if setuptoolsBlocker is not None:
+        # The startup runtime hooks blocked `import setuptools` (to keep
+        # PyInstaller's setuptools runtime hook from importing setuptools at
+        # every startup); all of the runtime hooks have run now, so remove
+        # the blocker and let user code import setuptools normally again.
+        try:
+            sys.meta_path.remove(setuptoolsBlocker)
+        except ValueError:
+            pass
+
     AllModules = False
     if len(sys.argv) == 1 and not hasattr(sys, 'frozen'):
         AllModules = True

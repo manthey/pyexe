@@ -162,7 +162,13 @@ jobs:
             }
             Get-ChildItem -Path $env:TARGETDIR -Recurse -Include *.pyc, *.pyo -File |
               Remove-Item -Force
-            & $pybin -m PyInstaller --onefile pyexe.py --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --exclude-module setuptools_scm --runtime-hook hooks\rth_subprocess.py --runtime-hook hooks\rth_pip.py --runtime-hook hooks\pyi_rth_multiprocessing.py --icon "$env:TARGETDIR\pythonw.exe"
+            # setuptools must be analyzed as a normal module of the bundle,
+            # not just as a dependency of the runtime hooks: modules that are
+            # only reachable through runtime hook scripts do not get their
+            # hooks applied, which dropped the hook-setuptools hidden imports
+            # and the data files of setuptools' vendored jaraco.text, breaking
+            # `import setuptools` and, indirectly, `import distutils`.
+            & $pybin -m PyInstaller --onefile pyexe.py --hidden-import setuptools --exclude-module FixTk --exclude-module tcl --exclude-module tk --exclude-module _tkinter --exclude-module tkinter --exclude-module Tkinter --exclude-module setuptools_scm --runtime-hook hooks\rth_subprocess.py --runtime-hook hooks\rth_pip.py --runtime-hook hooks\rth_distutils.py --runtime-hook hooks\pyi_rth_multiprocessing.py --icon "$env:TARGETDIR\pythonw.exe"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             Copy-Item dist\pyexe.exe ${{ matrix.output }} -Force
             # Test that all of the bundled modules import in the executable.

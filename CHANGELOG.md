@@ -16,6 +16,28 @@
 
 ### Changes
 
+- Reduce the startup time of the stand-alone executables, which is dominated
+  by the work of PyInstaller's runtime hooks: the hook that registers the
+  frozen importers with pip's vendored distlib now defers the registration
+  until distlib is first imported (it costs several hundred milliseconds,
+  since importing distlib pulls in logging, ssl, hashlib, socket, and other
+  substantial modules, and pip is usually not used at all), and the
+  distutils shim that PyInstaller's automatic setuptools runtime hook
+  installs is now installed directly from the lightweight `_distutils_hack`
+  module instead, so that setuptools (another several hundred milliseconds)
+  is no longer imported at startup.  The executables start in roughly
+  40% less time for the single-file builds (1.25 s to 0.75 s for
+  `-c pass`), and 3 times faster for one-directory builds (0.65 s to
+  0.2 s).  The remaining startup time of the single-file builds is the
+  bootloader extracting the bundle to a temporary directory, which is
+  inherent to shipping a single file.
+- Bundle setuptools as a normally analyzed module of the build (it was only
+  reachable through the runtime hooks, whose dependencies do not get their
+  hooks applied): the data files of setuptools' vendored jaraco.text were
+  not collected, so `import setuptools` failed in the stand-alone
+  executable, and `import distutils` only worked by accident, through the
+  partially imported setuptools left behind by the failing runtime hook.
+  Both now work.
 - Add a tox configuration and a `dev` dependency group in `pyproject.toml`,
   and document the test recipe in the README: the tests must run from the
   `tests` directory, and the sample zipapp must be built first.  The tests
